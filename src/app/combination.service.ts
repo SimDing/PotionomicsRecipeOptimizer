@@ -157,7 +157,6 @@ export class CombinationService {
   }
 
   loadData() {
-    let fillSize = this.ingredientsService.ingredients.length - 1;
     const str = window.localStorage.getItem("AvailableIngredients");
     if (this.ingredientsService.ingredients.length < 2){
       this.ingredientsService.parseCSV()
@@ -180,6 +179,10 @@ export class CombinationService {
         this.ingredAvail.push(0);
       }
     }
+  }
+
+  clearData(){
+    window.localStorage.removeItem("AvailableIngredients");
   }
 
   buildIngredientsSuper(arr: IngredientStats[] = this.ingredientsService.ingredients) {

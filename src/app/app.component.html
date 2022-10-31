@@ -4,6 +4,7 @@
             <button *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
+            <span [matTooltipShowDelay]="500" matTooltip="I only did this for fun and for my own use, sharing it was an afterthought.">v.0.0.0 and don't expect updates.</span>
             <div *ngIf="!mainLoopService.started">paused</div>
             <div>{{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
@@ -23,9 +24,10 @@
             </table>
         </div>
         <div class="rightPanel">
-            change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
-            <button (click)="combinationService.saveData()">Save Inventory</button>
-            <button (click)="combinationService.loadData()">Load Inventory</button>
+            Change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
+            <button (click)="combinationService.saveData()">Save Settings</button>
+            <button (click)="combinationService.loadData()">Load Settings</button>
+            <button (click)="combinationService.clearData()">Clear Settings</button>
             <table *ngIf="!mainLoopService.started">
                 <tr>
                     <td>Name</td>
