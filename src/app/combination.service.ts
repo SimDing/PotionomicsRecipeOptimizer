@@ -9,7 +9,9 @@ interface Indexer {
 
 interface Data {
   ingredAvail: number[],
-  selectedFormula: FormulaType
+  selectedFormula: FormulaType,
+  target: number,
+  ingredCount: number
 }
 
 enum PotionRank {
@@ -147,7 +149,9 @@ export class CombinationService {
   saveData() {
     const data: Data = {
       ingredAvail: this.ingredAvail,
-      selectedFormula: this.ingredientsService.selectedFormula
+      selectedFormula: this.ingredientsService.selectedFormula,
+      target: this.target,
+      ingredCount: this.ingredCount
     }
     window.localStorage.setItem("AvailableIngredients", JSON.stringify(data))
   }
@@ -162,6 +166,8 @@ export class CombinationService {
       let data = JSON.parse(str) as Data;
       this.ingredAvail = data.ingredAvail;
       this.ingredientsService.selectedFormula = data.selectedFormula || 0;
+      this.target = data.target || 375;
+      this.ingredCount = data.ingredCount || 8
       this.updateFormula();
     }
     if (!str || !this.ingredAvail) {
