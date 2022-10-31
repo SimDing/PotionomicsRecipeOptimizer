@@ -1,43 +1,82 @@
-<router-outlet></router-outlet>
-<button (click)="importCSVClick()">Import Ingredient CSV</button>
-<button (click)="exportCSVClick()">Export Recipe CSV</button>
-<button *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
-<button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
-<div *ngIf="!mainLoopService.started">paused</div>
-<div>{{mainLoopService.currentTime - mainLoopService.refreshTime}}</div>
-<p>
-<div>{{this.combinationService.totalCount}}</div>
-<div>{{this.combinationService.hitCount}}</div>
-<table *ngFor="let i of this.combinationService.indexer">
-    <tr>{{i.index}}</tr>
-</table>
-<p>
-
-
-<table>
-    <ng-container *ngFor="let ingredient of this.combinationService.recipeList; let i = index">
-        <tr>
-            <td>{{i}}: {{ingredient.name}}</td>
-            <td>{{ingredient.A}}</td>
-            <td>{{ingredient.B}}</td>
-            <td>{{ingredient.C}}</td>
-            <td>{{ingredient.D}}</td>
-            <td>{{ingredient.E}}</td>
-            <td>{{ingredient.Total}}</td>
-
-        </tr>
-    </ng-container>
-</table>
-<p>
-<table>
-    <ng-container *ngFor="let ingredient of this.combinationService.ingredientList; let i = index">
-        <tr>
-            <td>{{ingredient.index}}: {{ingredient.name}}</td>
-            <td>{{ingredient.A}}</td>
-            <td>{{ingredient.B}}</td>
-            <td>{{ingredient.C}}</td>
-            <td>{{ingredient.D}}</td>
-            <td>{{ingredient.E}}</td>
-        </tr>
-    </ng-container>
-</table>
+<div class="wrapper">
+    <div class="panelContainer">
+        <div class="leftPanel">
+            <button *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
+            <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
+            <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
+            <div *ngIf="!mainLoopService.started">paused</div>
+            <div>{{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
+            Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
+            <div>Cauldron ingredient target: <input type="number" min="0" max="20"
+                    value="{{combinationService.ingredCount}}" (change)="ingredCountChange($event)"></div>
+            <div>Cauldron magamin {{combinationService.superMode ? "target: " : "max: "}}<input type="number" min="0"
+                    max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
+            <p> Formula: <select (change)="percUpdate($event)">
+                    <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
+                        [selected]="formula.type === ingredientsService.selectedFormula">{{formula.name}}</option>
+                </select>
+            <p>
+            <div>Total tries: {{combinationService.totalCount}}</div>
+            <div>Recipes found: {{combinationService.hitCount}}</div>
+            <table *ngFor="let j of combinationService.indexer; let i = index">
+                Ingredient {{i + 1}} remaining checks: {{j.index + 1}}
+            </table>
+        </div>
+        <div class="rightPanel">
+            change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
+            <button (click)="combinationService.saveData()">Save Inventory</button>
+            <button (click)="combinationService.loadData()">Load Inventory</button>
+            <table *ngIf="!mainLoopService.started">
+                <tr>
+                    <td>Name</td>
+                    <td>A</td>
+                    <td>B</td>
+                    <td>C</td>
+                    <td>D</td>
+                    <td>E</td>
+                    <td>Total</td>
+                </tr>
+                <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
+                    <tr [ngClass]="ingredCheck(i)">
+                        <td>{{ingredient.index + 1}}: {{ingredient.name}}</td>
+                        <td>{{ingredient.A}}</td>
+                        <td>{{ingredient.B}}</td>
+                        <td>{{ingredient.C}}</td>
+                        <td>{{ingredient.D}}</td>
+                        <td>{{ingredient.E}}</td>
+                        <td>{{ingredient.Total}}</td>
+                        <td>inventory:<input type="number" min="0" max="20"
+                                value="{{combinationService.ingredAvail[i]}}" (change)="ingredAvailChange($event, i)">
+                        </td>
+                    </tr>
+                </ng-container>
+            </table>
+        </div>
+    </div>
+    <div class="panelContainer">
+        <div class="bottomPanel">
+            <table>
+                <tr *ngIf="combinationService.recipeList.length > 1" text-align="center">
+                    <td>Name</td>
+                    <td>A</td>
+                    <td>B</td>
+                    <td>C</td>
+                    <td>D</td>
+                    <td>E</td>
+                    <td>Total</td>
+                </tr>
+                <ng-container *ngFor="let ingredient of combinationService.recipeList; let i = index">
+                    <tr *ngIf="i + 1 < combinationService.recipeList.length">
+                        <td>{{i + 1}}: {{ingredient.name}}</td>
+                        <td>{{ingredient.A}}</td>
+                        <td>{{ingredient.B}}</td>
+                        <td>{{ingredient.C}}</td>
+                        <td>{{ingredient.D}}</td>
+                        <td>{{ingredient.E}}</td>
+                        <td>{{ingredient.Total}}</td>
+                    </tr>
+                </ng-container>
+            </table>
+        </div>
+    </div>
+</div>

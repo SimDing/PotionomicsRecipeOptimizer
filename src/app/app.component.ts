@@ -8,19 +8,20 @@ import { MainLoopService } from './main-loop-service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.less']
 })
 export class AppComponent implements OnInit {
 
   title = 'PotionomicsBruteforcer';
+  percents: number[] = [0.5, 0.5, 0, 0,]
 
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
     public combinationService: CombinationService
-  ) { 
-    
-    //test array
+  ) {
+
+    /*test array
     let arr: IngredientStats[] = [{
       index: 0,
       name: "AB",
@@ -52,11 +53,49 @@ export class AppComponent implements OnInit {
       Total: 4,
       Price: 0
     }];
-    this.combinationService.buildIngredients(arr);
-    this.combinationService.buildIngredients(this.ingredientsService.ingredients);
+    this.combinationService.mode ? this.combinationService.buildIngredientsSuper(arr) : this.combinationService.buildIngredientsPerfect(arr);*/
+    this.combinationService.superMode ? this.combinationService.buildIngredientsSuper() : this.combinationService.buildIngredientsPerfect();
+  }
+
+  ingredCheck(i: number): string {
+    return this.combinationService.ingredientList.find((a) => (a.index == i)) ? "GREEN" : ""
+  }
+
+  allAvailChange(event: Event) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    let numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
+    for (let i = 0; i < this.combinationService.ingredAvail.length; i++) {
+      this.combinationService.ingredAvail[i] = numCheck;
+    }
+  }
+
+  ingredAvailChange(event: Event, index: number) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    let numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
+    this.combinationService.ingredAvail[index] = numCheck;
+  }
+
+  ingredCountChange(event: Event) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    let numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
+    this.combinationService.ingredCount = numCheck;
+    this.resetClick();
+  }
+
+  targetChange(event: Event) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    let numCheck = Math.max(Math.min(event.target.valueAsNumber, 2000), 0);
+    this.combinationService.target = numCheck;
+    this.resetClick();
+  }
+
+  modeClick() {
+    this.combinationService.superMode = !this.combinationService.superMode;
+    this.combinationService.updateFormula();
   }
 
   ngOnInit(): void {
+    this.combinationService.loadData();
     this.mainLoopService.start();
   }
 
@@ -64,19 +103,26 @@ export class AppComponent implements OnInit {
     this.mainLoopService.started = !this.mainLoopService.started;
   }
 
-  listRecipe() {
-
+  resetClick() {
+    this.combinationService.indexerInit();
+    this.combinationService.recipeInit();
   }
 
-  importCSVClick() {
-    //this.ingredientsService.parseCSV();
+  percUpdate(event: Event) {
+    if (!(event.target instanceof HTMLSelectElement)) return;
+    this.ingredientsService.selectedFormula = parseInt(event.target.value);
+    this.combinationService.updateFormula();
   }
-
-  exportCSVClick() {
-    /*  const element = document.createElement('a');
-      element.setAttribute('href', `data:text/plain;charset=utf-8,${this.title + "\n1,2,3,4,5\n6,7,8,9,0"}`);
-      element.setAttribute('download', `PotionsList.csv`);
-      const event = new MouseEvent("click");
-      element.dispatchEvent(event);*/
-  }
+  /*
+    importCSVClick() {
+      //this.ingredientsService.parseCSV();
+    }
+  
+    exportCSVClick() {
+      /*  const element = document.createElement('a');
+        element.setAttribute('href', `data:text/plain;charset=utf-8,${this.title + "\n1,2,3,4,5\n6,7,8,9,0"}`);
+        element.setAttribute('download', `PotionsList.csv`);
+        const event = new MouseEvent("click");
+        element.dispatchEvent(event);*//*
+}*/
 }
