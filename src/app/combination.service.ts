@@ -14,6 +14,12 @@ interface Data {
   ingredCount: number
 }
 
+enum Sort {
+  Alphabetically,
+  ByTotal,
+  Recipe
+}
+
 enum PotionRank {
   Minor,
   Common,
@@ -37,7 +43,9 @@ export class CombinationService {
     D: 0,
     E: 0,
     Total: 0,
-    Price: 0
+    Price: 0,
+    Avail: 0,
+    recipe: false
   }];
 
   ingredientList: IngredientStats[] = [];
@@ -46,6 +54,7 @@ export class CombinationService {
   totalCount = 0;
   hitCount = 0;
   superMode = false;
+  sortMode = Sort.Alphabetically;
 
   private tempIngredAvail: number[] = [];
   private percA = 50 / 100;
@@ -73,7 +82,9 @@ export class CombinationService {
           D: 0,
           E: 0,
           Total: 0,
-          Price: 0
+          Price: 0,
+          Avail: 0,
+          recipe: false
         })
       }
       if (this.recipeList.length > 200) {
@@ -88,7 +99,9 @@ export class CombinationService {
           D: 0,
           E: 0,
           Total: 0,
-          Price: 0
+          Price: 0,
+          Avail: 0,
+          recipe: false
         });
       }
       this.tempIngredAvail.splice(0);
@@ -140,7 +153,9 @@ export class CombinationService {
       D: 0,
       E: 0,
       Total: 0,
-      Price: 0
+      Price: 0,
+      Avail: 0,
+      recipe: false
     }];
     this.totalCount = 0;
     this.hitCount = 0;
@@ -158,7 +173,7 @@ export class CombinationService {
 
   loadData() {
     const str = window.localStorage.getItem("AvailableIngredients");
-    if (this.ingredientsService.ingredients.length < 2){
+    if (this.ingredientsService.ingredients.length < 2) {
       this.ingredientsService.parseCSV()
     }
     if (str) {
@@ -174,15 +189,26 @@ export class CombinationService {
       for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
         this.ingredAvail.push(0);
       }
-    } else if (this.ingredAvail.length < this.ingredientsService.ingredients.length){
+    } else if (this.ingredAvail.length < this.ingredientsService.ingredients.length) {
       for (let i = this.ingredAvail.length; i < this.ingredientsService.ingredients.length; i++) {
         this.ingredAvail.push(0);
       }
     }
   }
 
-  clearData(){
+  clearData() {
     window.localStorage.removeItem("AvailableIngredients");
+  }
+
+  sortChange() {
+    if (++this.sortMode > 1) this.sortMode = 0;
+    if (this.sortMode == Sort.Alphabetically) {
+      this.ingredientsService.ingredients.sort((a, b) => a.index - b.index);
+    } else if (this.sortMode == Sort.ByTotal) {
+      this.ingredientsService.ingredients.sort((a, b) => a.Total - b.Total);
+    } else if (this.sortMode == Sort.Recipe) {
+
+    }
   }
 
   buildIngredientsSuper(arr: IngredientStats[] = this.ingredientsService.ingredients) {
@@ -283,7 +309,9 @@ export class CombinationService {
         D: 0,
         E: 0,
         Total: 0,
-        Price: 0
+        Price: 0,
+        Avail: 0,
+        recipe: false
       })
       return;
     }
@@ -305,7 +333,9 @@ export class CombinationService {
         D: 0,
         E: 0,
         Total: 0,
-        Price: 0
+        Price: 0,
+        Avail: 0,
+        recipe: false
       })
 
     } else {
@@ -428,7 +458,9 @@ export class CombinationService {
         D: 0,
         E: 0,
         Total: 0,
-        Price: 0
+        Price: 0,
+        Avail: 0,
+        recipe: false
       })
       return;
     }
@@ -450,7 +482,9 @@ export class CombinationService {
         D: 0,
         E: 0,
         Total: 0,
-        Price: 0
+        Price: 0,
+        Avail: 0,
+        recipe: false
       })
     } else {
       this.comboIndex++;

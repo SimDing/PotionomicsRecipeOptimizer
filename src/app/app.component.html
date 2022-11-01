@@ -4,7 +4,8 @@
             <button *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
-            <span [matTooltipShowDelay]="500" matTooltip="I only did this for fun and for my own use, sharing it was an afterthought.">v.0.0.0 and don't expect updates.</span>
+            <span [matTooltipShowDelay]="500"
+                matTooltip="Added sorting, more in the works. I only did this for fun and for my own use, sharing it was an afterthought so don't expect updates.">v.0.0.2 Hover for more</span>
             <div *ngIf="!mainLoopService.started">paused</div>
             <div>{{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
@@ -28,6 +29,10 @@
             <button (click)="combinationService.saveData()">Save Settings</button>
             <button (click)="combinationService.loadData()">Load Settings</button>
             <button (click)="combinationService.clearData()">Clear Settings</button>
+            <button (click)="combinationService.sortChange()">Sorted 
+                <ng-container *ngIf="combinationService.sortMode == 0">Alphabetically</ng-container>
+                <ng-container *ngIf="combinationService.sortMode == 1">By Total</ng-container>
+            </button>
             <table *ngIf="!mainLoopService.started">
                 <tr>
                     <td>Name</td>
@@ -40,7 +45,7 @@
                 </tr>
                 <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
                     <tr [ngClass]="ingredCheck(i)">
-                        <td>{{ingredient.index + 1}}: {{ingredient.name}}</td>
+                        <td>{{ingredient.name}}</td>
                         <td>{{ingredient.A}}</td>
                         <td>{{ingredient.B}}</td>
                         <td>{{ingredient.C}}</td>
