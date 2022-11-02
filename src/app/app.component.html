@@ -5,7 +5,7 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added sorting, more in the works. I only did this for fun and for my own use, sharing it was an afterthought so don't expect updates.">v.0.0.2 Hover for more</span>
+                matTooltip="Added sort and filter, saves may be incompatible and will definitely lose inventory. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">v.0.0.2 Hover for more</span>
             <div *ngIf="!mainLoopService.started">paused</div>
             <div>{{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
@@ -24,7 +24,7 @@
                 Ingredient {{i + 1}} remaining checks: {{j.index + 1}}
             </table>
         </div>
-        <div class="rightPanel">
+        <div class="rightPanel" *ngIf="!mainLoopService.started">
             Change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
             <button (click)="combinationService.saveData()">Save Settings</button>
             <button (click)="combinationService.loadData()">Load Settings</button>
@@ -32,6 +32,10 @@
             <button (click)="combinationService.sortChange()">Sorted 
                 <ng-container *ngIf="combinationService.sortMode == 0">Alphabetically</ng-container>
                 <ng-container *ngIf="combinationService.sortMode == 1">By Total</ng-container>
+            </button>
+            <button (click)="combinationService.filterRecipe()">
+                <ng-container *ngIf="combinationService.filter == false">Unfiltered</ng-container>
+                <ng-container *ngIf="combinationService.filter == true">Recipe Filtered</ng-container>
             </button>
             <table *ngIf="!mainLoopService.started">
                 <tr>
@@ -44,7 +48,7 @@
                     <td>Total</td>
                 </tr>
                 <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
-                    <tr [ngClass]="ingredCheck(i)">
+                    <tr [ngClass]="ingredCheck(ingredient.index)" >
                         <td>{{ingredient.name}}</td>
                         <td>{{ingredient.A}}</td>
                         <td>{{ingredient.B}}</td>
@@ -53,7 +57,7 @@
                         <td>{{ingredient.E}}</td>
                         <td>{{ingredient.Total}}</td>
                         <td>inventory:<input type="number" min="0" max="20"
-                                value="{{combinationService.ingredAvail[i]}}" (change)="ingredAvailChange($event, i)">
+                                value="{{ingredient.Avail}}" (change)="ingredAvailChange($event, i)">
                         </td>
                     </tr>
                 </ng-container>

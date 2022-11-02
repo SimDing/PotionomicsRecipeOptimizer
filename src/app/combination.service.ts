@@ -8,10 +8,12 @@ interface Indexer {
 }
 
 interface Data {
-  ingredAvail: number[],
+  ingredients: IngredientStats[],
   selectedFormula: FormulaType,
   target: number,
-  ingredCount: number
+  ingredCount: number,
+  sortMode: Sort,
+  filter: boolean
 }
 
 enum Sort {
@@ -49,14 +51,14 @@ export class CombinationService {
   }];
 
   ingredientList: IngredientStats[] = [];
-  ingredAvail: number[] = [];
+  private IngredAvail: number[] = [];
   indexer: Indexer[] = [{ index: 0, ingredient: [] }];
   totalCount = 0;
   hitCount = 0;
   superMode = false;
   sortMode = Sort.Alphabetically;
+  filter = false;
 
-  private tempIngredAvail: number[] = [];
   private percA = 50 / 100;
   private percB = 50 / 100;
   private percC = 0 / 100;
@@ -104,10 +106,12 @@ export class CombinationService {
           recipe: false
         });
       }
-      this.tempIngredAvail.splice(0);
-      for (let i = 0; i < this.ingredAvail.length - 1; i++) {
-        this.tempIngredAvail.push(this.ingredAvail[i]);
+      this.IngredAvail.splice(0);
+      this.ingredientsService.ingredients.sort((a, b) => a.index - b.index);
+      for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) {
+        this.IngredAvail.push(this.ingredientsService.ingredients[i].Avail);
       }
+      this.sortChange(true);
       this.superMode ? this.discoverCombinationsSuper() : this.discoverCombinationsPerfect();
       this.totalCount++;
     });
@@ -130,7 +134,7 @@ export class CombinationService {
 
   indexerInit() {
     this.indexer = [];
-    let tempIndex: Indexer = { index: 0, ingredient: [] }
+    const tempIndex: Indexer = { index: 0, ingredient: [] }
     let i = 0;
     while (i < this.ingredientList.length) {
       tempIndex.ingredient.push(this.ingredientList[i].index);
@@ -163,10 +167,12 @@ export class CombinationService {
 
   saveData() {
     const data: Data = {
-      ingredAvail: this.ingredAvail,
       selectedFormula: this.ingredientsService.selectedFormula,
       target: this.target,
-      ingredCount: this.ingredCount
+      ingredCount: this.ingredCount,
+      ingredients: this.ingredientsService.ingredients,
+      sortMode: this.sortMode,
+      filter: this.filter
     }
     window.localStorage.setItem("AvailableIngredients", JSON.stringify(data))
   }
@@ -177,37 +183,40 @@ export class CombinationService {
       this.ingredientsService.parseCSV()
     }
     if (str) {
-      let data = JSON.parse(str) as Data;
-      this.ingredAvail = data.ingredAvail;
+      const data = JSON.parse(str) as Data;
       this.ingredientsService.selectedFormula = data.selectedFormula || 0;
       this.target = data.target || 375;
-      this.ingredCount = data.ingredCount || 8
+      this.ingredCount = data.ingredCount || 8;
+      this.ingredientsService.ingredients = data.ingredients || [];
+      this.sortMode = data.sortMode || Sort.Alphabetically;
+      this.filter = data.filter || false;
       this.updateFormula();
     }
-    if (!str || !this.ingredAvail) {
-      this.ingredAvail.splice(0);
-      for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
-        this.ingredAvail.push(0);
-      }
-    } else if (this.ingredAvail.length < this.ingredientsService.ingredients.length) {
-      for (let i = this.ingredAvail.length; i < this.ingredientsService.ingredients.length; i++) {
-        this.ingredAvail.push(0);
-      }
+    if (!str || !this.ingredientsService.ingredients.length) {
+      this.ingredientsService.selectedFormula =  0;
+      this.target = 375;
+      this.ingredCount = 8;
+      this.sortMode = Sort.Alphabetically;
+      this.filter = false;
+      this.ingredientsService.parseCSV();
     }
   }
 
   clearData() {
     window.localStorage.removeItem("AvailableIngredients");
+    this.loadData();
   }
 
-  sortChange() {
-    if (++this.sortMode > 1) this.sortMode = 0;
+  filterRecipe(){
+    this.filter = !this.filter;
+  }
+
+  sortChange(sortOnly = false) {
+    if (!sortOnly && ++this.sortMode > 1) this.sortMode = 0;
     if (this.sortMode == Sort.Alphabetically) {
       this.ingredientsService.ingredients.sort((a, b) => a.index - b.index);
     } else if (this.sortMode == Sort.ByTotal) {
       this.ingredientsService.ingredients.sort((a, b) => a.Total - b.Total);
-    } else if (this.sortMode == Sort.Recipe) {
-
     }
   }
 
@@ -215,15 +224,15 @@ export class CombinationService {
     let percAtoE = 0;
     this.ingredientList = JSON.parse(JSON.stringify(arr));
     let i = this.ingredientList.length;
-    let validA = this.percA > 0;
-    let validB = this.percB > 0;
-    let validC = this.percC > 0;
-    let validD = this.percD > 0;
-    let validE = this.percE > 0;
+    const validA = this.percA > 0;
+    const validB = this.percB > 0;
+    const validC = this.percC > 0;
+    const validD = this.percD > 0;
+    const validE = this.percE > 0;
 
 
     // Sort and Filter out useless materials
-    this.ingredientList.sort((a, b) => a.index - b.index);
+    this.ingredientList.sort((a, b) => a.Total - b.Total);
     while (i > 0) {
       i--;
       percAtoE =
@@ -241,18 +250,21 @@ export class CombinationService {
         ((this.ingredientList[i].E > 0) == validE && validE)
       )) {
         this.ingredientList.splice(i, 1);
-      };
+        this.ingredientsService.ingredients[i].recipe = false;
+      } else {
+        this.ingredientsService.ingredients[i].recipe = true;
+      }
     }
     this.indexerInit();
   }
 
   joinIngredientsSuper(): number {
     let percAtoE = 0;
-    let arr = this.indexer[this.comboIndex];
-    let recipe = this.recipeList[this.recipeList.length - 1];
+    const arr = this.indexer[this.comboIndex];
+    const recipe = this.recipeList[this.recipeList.length - 1];
 
     while (arr.index >= 0) {
-      if (!this.tempIngredAvail[this.ingredientList[arr.index].index]) {
+      if (!this.IngredAvail[this.ingredientList[arr.index].index]) {
         arr.index--;
         continue;
       }
@@ -275,7 +287,7 @@ export class CombinationService {
         recipe.D += this.ingredientList[arr.index].D;
         recipe.E += this.ingredientList[arr.index].E;
         recipe.Total += this.ingredientList[arr.index].Total;
-        this.tempIngredAvail[this.ingredientList[arr.index].index]--;
+        this.IngredAvail[this.ingredientList[arr.index].index]--;
         break;
       }
     }
@@ -349,15 +361,15 @@ export class CombinationService {
     let percAtoE = 0;
     this.ingredientList = JSON.parse(JSON.stringify(arr));
     let i = this.ingredientList.length;
-    let validA = this.percA > 0;
-    let validB = this.percB > 0;
-    let validC = this.percC > 0;
-    let validD = this.percD > 0;
-    let validE = this.percE > 0;
+    const validA = this.percA > 0;
+    const validB = this.percB > 0;
+    const validC = this.percC > 0;
+    const validD = this.percD > 0;
+    const validE = this.percE > 0;
 
 
     // Sort and Filter out useless materials
-    this.ingredientList.sort((a, b) => a.index - b.index);
+    this.ingredientList.sort((a, b) => a.Total - b.Total);
     while (i > 0) {
       i--;
       percAtoE =
@@ -375,27 +387,30 @@ export class CombinationService {
         ((this.ingredientList[i].E > 0) == validE && validE)
       )) {
         this.ingredientList.splice(i, 1);
-      };
+        this.ingredientsService.ingredients[i].recipe = false;
+      } else {
+        this.ingredientsService.ingredients[i].recipe = true;
+      }
     }
     this.indexerInit();
   }
 
   joinIngredientsPerfect(): number {
     let percAtoE = 0;
-    let arr = this.indexer[this.comboIndex];
-    let recipe = this.recipeList[this.recipeList.length - 1];
+    const arr = this.indexer[this.comboIndex];
+    const recipe = this.recipeList[this.recipeList.length - 1];
 
     while (arr.index >= 0) {
-      if (!this.tempIngredAvail[this.ingredientList[arr.index].index]) {
+      if (!this.IngredAvail[this.ingredientList[arr.index].index]) {
         arr.index--;
         continue;
       }
-      let A = this.ingredientList[arr.index].A;
-      let B = this.ingredientList[arr.index].B;
-      let C = this.ingredientList[arr.index].C;
-      let D = this.ingredientList[arr.index].D;
-      let E = this.ingredientList[arr.index].E;
-      let Total = this.ingredientList[arr.index].Total;
+      const A = this.ingredientList[arr.index].A;
+      const B = this.ingredientList[arr.index].B;
+      const C = this.ingredientList[arr.index].C;
+      const D = this.ingredientList[arr.index].D;
+      const E = this.ingredientList[arr.index].E;
+      const Total = this.ingredientList[arr.index].Total;
       if (this.comboIndex >= this.ingredCount - 1) {
         percAtoE =
           Math.max(((recipe.A + A) / (recipe.Total + Total)) - this.percA, 0) +
@@ -424,7 +439,7 @@ export class CombinationService {
         recipe.D += D;
         recipe.E += E;
         recipe.Total += Total;
-        this.tempIngredAvail[this.ingredientList[arr.index].index]--;
+        this.IngredAvail[this.ingredientList[arr.index].index]--;
         break;
       }
     }

@@ -267,7 +267,7 @@ export class IngredientsService {
     //parse for IngredientStats
     let m;
     let i = 0;
-    let tempStats: IngredientStats = {
+    const tempStats: IngredientStats = {
       index: 0,
       name: "",
       A: 0,
@@ -284,7 +284,7 @@ export class IngredientsService {
     if ((m = regex.exec(str)) == null) {
       return;
     }
-    regex = /([\/\ \-'’A-z]*)(\,*)([0-9]*)(\,*)([0-9]*)(\,\t*)([0-9]*)(\,*)([0-9]*)(\,*)([0-9]*)(\,*)([0-9]*)(\,*)([0-9]*)(\,*)([-0-9]*)(\,*)([-0-9]*)(\,*)([-0-9]*)(\,*)([-0-9]*)(\,*)([-0-9]*)(\,*)([\/\ \-'’A-z]*)(\,*)([\/\ \-'’A-z]*)(\,*)([\/\ \-'’A-z]*)([\n|\r]*)/gi;
+    regex = /([/ \-'’A-z]*)(,*)([0-9]*)(,*)([0-9]*)(,\t*)([0-9]*)(,*)([0-9]*)(,*)([0-9]*)(,*)([0-9]*)(,*)([0-9]*)(,*)([-0-9]*)(,*)([-0-9]*)(,*)([-0-9]*)(,*)([-0-9]*)(,*)([-0-9]*)(,*)([/ \-'’A-z]*)(,*)([/ \-'’A-z]*)(,*)([/ \-'’A-z]*)([\n|\r]*)/gi;
     while ((m = regex.exec(str)) != null) {
       // This is necessary to avoid infinite loops with zero-width matches
       if (m.index === regex.lastIndex) {

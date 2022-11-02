@@ -15,8 +15,6 @@ export class MainLoopService {
   currentTime = new Date().getTime();
   started = false;
 
-  constructor() { }
-
   start(){
 
     window.setInterval(() => {
