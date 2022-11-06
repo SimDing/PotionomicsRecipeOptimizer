@@ -5,47 +5,63 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added sort and filter, saves may be incompatible and will definitely lose inventory. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">v.0.0.2 Hover for more</span>
-            <div *ngIf="!mainLoopService.started">paused</div>
-            <div>{{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
+                matTooltip="Added better sorting, traits and value. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
+                v.0.1.0 Hover for more</span>
+            <div *ngIf="!mainLoopService.started"> paused</div>
+            <div> {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
-            <div>Cauldron ingredient target: <input type="number" min="0" max="20"
-                    value="{{combinationService.ingredCount}}" (change)="ingredCountChange($event)"></div>
-            <div>Cauldron magamin {{combinationService.superMode ? "target: " : "max: "}}<input type="number" min="0"
-                    max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
-            <p> Formula: <select (change)="percUpdate($event)">
-                    <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
-                        [selected]="formula.type === ingredientsService.selectedFormula">{{formula.name}}</option>
-                </select>
-            <p>
-            <div>Total tries: {{combinationService.totalCount}}</div>
-            <div>Recipes found: {{combinationService.hitCount}}</div>
+            <div> Cauldron ingredient target: <input type="number" min="0" max="20" value="{{combinationService.ingredCount}}" (change)="ingredCountChange($event)"></div>
+            <div> Cauldron magamin {{combinationService.superMode ? "target: " : "max: "}}<input type="number" min="0" max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
+            Formula: <select (change)="percUpdate($event)">
+                <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
+                [selected]="formula.type === ingredientsService.selectedFormula">{{formula.name}}</option>
+            </select>
+            <div> Shop % bonus: <input type="number" min="0" max="10000" value="{{combinationService.shopBonus}}" (change)="bonusChange($event)"></div>
+            <p></p>
+            <div> Total tries: {{combinationService.totalCount}}</div>
+            <div> Recipes found: {{combinationService.hitCount}}</div>
             <table *ngFor="let j of combinationService.indexer; let i = index">
                 Ingredient {{i + 1}} remaining checks: {{j.index + 1}}
             </table>
         </div>
         <div class="rightPanel" *ngIf="!mainLoopService.started">
+            <div> 
+                <button (click)="filterRecipe()" class="{{combinationService.filter == true ? 'filtered' : ''}}">
+                Filter Recipe
+                </button>
+                Add good: 
+                <button (click)="setTrait(combinationService.senses.Taste)" class="{{combinationService.traits[combinationService.senses.Taste] == true ? 'filtered' : ''}}">Taste</button>                
+                <button (click)="setTrait(combinationService.senses.Touch)" class="{{combinationService.traits[combinationService.senses.Touch] == true ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setTrait(combinationService.senses.Smell)" class="{{combinationService.traits[combinationService.senses.Smell] == true ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setTrait(combinationService.senses.Sight)" class="{{combinationService.traits[combinationService.senses.Sight] == true ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setTrait(combinationService.senses.Sound)" class="{{combinationService.traits[combinationService.senses.Sound] == true ? 'filtered' : ''}}">Sound</button>
+            </div>
             Change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
+            <button (click)="setToQuinns()">Set to Quinn's</button>
             <button (click)="combinationService.saveData()">Save Settings</button>
             <button (click)="combinationService.loadData()">Load Settings</button>
             <button (click)="combinationService.clearData()">Clear Settings</button>
-            <button (click)="combinationService.sortChange()">Sorted 
-                <ng-container *ngIf="combinationService.sortMode == 0">Alphabetically</ng-container>
-                <ng-container *ngIf="combinationService.sortMode == 1">By Total</ng-container>
-            </button>
-            <button (click)="combinationService.filterRecipe()">
-                <ng-container *ngIf="combinationService.filter == false">Unfiltered</ng-container>
-                <ng-container *ngIf="combinationService.filter == true">Recipe Filtered</ng-container>
-            </button>
-            <table *ngIf="!mainLoopService.started">
+            
+            Click header to sort
+            <table>
                 <tr>
-                    <td>Name</td>
-                    <td>A</td>
-                    <td>B</td>
-                    <td>C</td>
-                    <td>D</td>
-                    <td>E</td>
-                    <td>Total</td>
+                    <td (click)="combinationService.ingredientSort(1)">Name<mat-icon *ngIf="sortCheck(1,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(1,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(2)">A<mat-icon *ngIf="sortCheck(2,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(2,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(3)">B<mat-icon *ngIf="sortCheck(3,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(3,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(4)">C<mat-icon *ngIf="sortCheck(4,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(4,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(5)">D<mat-icon *ngIf="sortCheck(5,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(5,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(6)">E<mat-icon *ngIf="sortCheck(6,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(6,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(7)">Total<mat-icon *ngIf="sortCheck(7,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(7,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(8)">Cost<mat-icon *ngIf="sortCheck(8,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(8,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(9)">Taste<mat-icon *ngIf="sortCheck(9,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(9,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(10)">Touch<mat-icon *ngIf="sortCheck(10,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(10,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(11)">Smell<mat-icon *ngIf="sortCheck(11,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(11,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(12)">Sight<mat-icon *ngIf="sortCheck(12,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(12,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(13)">Sound<mat-icon *ngIf="sortCheck(13,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(13,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(14)">Rarity<mat-icon *ngIf="sortCheck(14,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(14,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(15)">Location<mat-icon *ngIf="sortCheck(15,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(15,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="combinationService.ingredientSort(16)">Type<mat-icon *ngIf="sortCheck(16,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(16,true)">keyboard_arrow_down</mat-icon></td>
+                    <td>Inventory</td>
                 </tr>
                 <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
                     <tr [ngClass]="ingredCheck(ingredient.index)" >
@@ -56,7 +72,16 @@
                         <td>{{ingredient.D}}</td>
                         <td>{{ingredient.E}}</td>
                         <td>{{ingredient.Total}}</td>
-                        <td>inventory:<input type="number" min="0" max="20"
+                        <td>{{ingredient.cost}}</td>
+                        <td>{{ingredient.Taste}}</td>
+                        <td>{{ingredient.Touch}}</td>
+                        <td>{{ingredient.Smell}}</td>
+                        <td>{{ingredient.Sight}}</td>
+                        <td>{{ingredient.Sound}}</td>
+                        <td>{{ingredient.Rarity}}</td>
+                        <td>{{ingredient.Location}}</td>
+                        <td>{{ingredient.Type}}</td>
+                        <td><input type="number" min="0" max="20"
                                 value="{{ingredient.Avail}}" (change)="ingredAvailChange($event, i)">
                         </td>
                     </tr>
@@ -65,29 +90,29 @@
         </div>
     </div>
     <div class="panelContainer">
-        <div class="bottomPanel">
+        <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
+            Results below. Shows top 1000 sorted descending by Value and Rank/Cost.
             <table>
-                <tr *ngIf="combinationService.recipeList.length > 1" text-align="center">
-                    <td>Name</td>
-                    <td>A</td>
-                    <td>B</td>
-                    <td>C</td>
-                    <td>D</td>
-                    <td>E</td>
-                    <td>Total</td>
-                </tr>
-                <ng-container *ngFor="let ingredient of combinationService.recipeList; let i = index">
-                    <tr *ngIf="i + 1 < combinationService.recipeList.length">
-                        <td>{{i + 1}}: {{ingredient.name}}</td>
-                        <td>{{ingredient.A}}</td>
-                        <td>{{ingredient.B}}</td>
-                        <td>{{ingredient.C}}</td>
-                        <td>{{ingredient.D}}</td>
-                        <td>{{ingredient.E}}</td>
-                        <td>{{ingredient.Total}}</td>
+                <span *ngIf="mainLoopService.started">Simulation running, pause for current results...</span>
+                <ng-container *ngIf="!mainLoopService.started">
+                    <tr *ngIf="combinationService.recipeListDisplay.length > 1" text-align="center">
+                        <td>Name</td>
+                        <td>Cost</td>
+                        <td>Rank</td>
+                        <td>Value</td>
+                        <td>Ratio</td>
                     </tr>
+                    <ng-container *ngFor="let recipe of combinationService.recipeListDisplay; let i = index;">
+                        <tr *ngIf="i + 1 < combinationService.recipeListDisplay.length">
+                            <td>{{i + 1}}: {{recipe.name}}</td>
+                            <td>{{recipe.cost}}</td>
+                            <td>{{recipe.rank.rank}}</td>
+                            <td>{{recipe.value}}*{{combinationService.potionCount()}}</td>
+                            <td>{{recipeRatio(i)}}</td>
+                        </tr>
+                    </ng-container>
                 </ng-container>
             </table>
-        </div>
+        </cdk-virtual-scroll-viewport>
     </div>
 </div>
