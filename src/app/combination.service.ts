@@ -338,7 +338,6 @@ export class CombinationService {
 
   recipeSort(list = this.recipeList) {
     list.sort((a, b) => (b.value * this.potionCount() - b.cost) - (a.value * this.potionCount() - a.cost));
-    list.sort((a, b) => b.rank.min - a.rank.min);
   }
 
   recipeDisplay(size = 1000, start = 0) {
@@ -347,10 +346,12 @@ export class CombinationService {
 
   recipeRank(stats: Recipe){
     const formula = this.ingredientsService.formulas[this.ingredientsService.selectedFormula];
-    for (const rank of this.rankRepo.ranks){
-      if (rank.min <= stats.Total && stats.Total < rank.max){
+    const ranks = this.rankRepo.ranks;
+    for (let i = 0; i < this.rankRepo.ranks.length - 1; i++){
+      if (ranks[i].min <= stats.Total && stats.Total < ranks[i].max){
         const bonus = this.shopBonus + stats.Smell + stats.Sight + stats.Sound + stats.Taste + stats.Touch;
-        stats.rank = rank;
+        // Since Perfect potions add 2+ ranks, gotta increase the base.
+        stats.rank = ranks[Math.min(i + 2, ranks.length - 1)];
         stats.value = Math.round(stats.rank.mult * formula.value * (bonus / 100 + 1));
       }
     }
@@ -552,7 +553,7 @@ export class CombinationService {
         Math.max((this.ingredientList[i].D / this.target) - this.percD, 0) +
         Math.max((this.ingredientList[i].E / this.target) - this.percE, 0);
 
-      if (percAtoE > 0 ||
+      if (percAtoE > 0.0025 ||
         (this.ingredientList[i].Taste < 0 && this.traits[Senses.Taste]) ||
         (this.ingredientList[i].Touch < 0 && this.traits[Senses.Touch]) ||
         (this.ingredientList[i].Smell < 0 && this.traits[Senses.Smell]) ||
@@ -605,7 +606,7 @@ export class CombinationService {
           Math.max(((recipe.D + D) / this.target) - this.percD, 0) +
           Math.max(((recipe.E + E) / this.target) - this.percE, 0);
       }
-      if (percAtoE > 0 || ((this.ingredCount - 1 - this.comboIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
+      if (percAtoE > 0.0025 || ((this.ingredCount - 1 - this.comboIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
         arr.index--;
       } else {
         if (this.comboIndex != 0) {
@@ -619,11 +620,11 @@ export class CombinationService {
         recipe.E += E;
         recipe.Total += Total;
         recipe.cost += ingredient.cost;
-        recipe.Taste = (ingredient.Taste || recipe.Taste) < 0 ? -5: ingredient.Taste > 0 ? 5: 0;
-        recipe.Touch = (ingredient.Touch || recipe.Touch) < 0 ? -5: ingredient.Touch > 0 ? 5: 0;
-        recipe.Smell = (ingredient.Smell || recipe.Smell) < 0 ? -5: ingredient.Smell > 0 ? 5: 0;
-        recipe.Sight = (ingredient.Sight || recipe.Sight) < 0 ? -5: ingredient.Sight > 0 ? 5: 0;
-        recipe.Sound = (ingredient.Sound || recipe.Sound) < 0 ? -5: ingredient.Sound > 0 ? 5: 0;
+        recipe.Taste = ingredient.Taste < 0 || recipe.Taste < 0 ? -5: ingredient.Taste > 0 ? 5: 0;
+        recipe.Touch = ingredient.Touch < 0 || recipe.Touch < 0 ? -5: ingredient.Touch > 0 ? 5: 0;
+        recipe.Smell = ingredient.Smell < 0 || recipe.Smell < 0 ? -5: ingredient.Smell > 0 ? 5: 0;
+        recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5: ingredient.Sight > 0 ? 5: 0;
+        recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5: ingredient.Sound > 0 ? 5: 0;
         this.IngredAvail[ingredient.index]--;
         break;
       }

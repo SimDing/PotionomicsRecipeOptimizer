@@ -5,8 +5,8 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added better sorting, traits and value. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
-                v.0.1.0 Hover for more</span>
+                matTooltip="Added better sorting, traits and value. And some fixes. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
+                v.0.1.1 Hover for more</span>
             <div *ngIf="!mainLoopService.started"> paused</div>
             <div> {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
@@ -101,6 +101,7 @@
                         <td>Rank</td>
                         <td>Value</td>
                         <td>Ratio</td>
+                        <td>Profit</td>
                     </tr>
                     <ng-container *ngFor="let recipe of combinationService.recipeListDisplay; let i = index;">
                         <tr *ngIf="i + 1 < combinationService.recipeListDisplay.length">
@@ -109,6 +110,7 @@
                             <td>{{recipe.rank.rank}}</td>
                             <td>{{recipe.value}}*{{combinationService.potionCount()}}</td>
                             <td>{{recipeRatio(i)}}</td>
+                            <td>{{recipe.value * combinationService.potionCount() - recipe.cost}}</td>
                         </tr>
                     </ng-container>
                 </ng-container>

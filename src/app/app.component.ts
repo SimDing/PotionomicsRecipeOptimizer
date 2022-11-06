@@ -73,7 +73,8 @@ export class AppComponent implements OnInit {
   bonusChange(event: Event){
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 10000), 0);
-    this.combinationService.shopBonus = numCheck;       
+    this.combinationService.shopBonus = numCheck;
+    this.combinationService.updateFormula();
   }
 
   filterRecipe() {
