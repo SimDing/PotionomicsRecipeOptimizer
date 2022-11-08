@@ -46,6 +46,7 @@ export enum SortCategory {
 }
 
 enum Senses {
+  None,
   Taste,
   Touch,
   Smell,
@@ -99,6 +100,7 @@ export class CombinationService {
   filter = false;
   traits = [false,false,false,false,false]
   senses = Senses;
+  illusion = 0;
 
   private percA = 50 / 100;
   private percB = 50 / 100;
@@ -679,6 +681,17 @@ export class CombinationService {
 
     if (this.comboIndex >= this.ingredCount - 1) {
       this.indexer[this.comboIndex].index--;
+      if (this.illusion == Senses.Taste){
+        this.recipeList[this.recipeList.length - 1].Taste = 5;
+      } else if (this.illusion == Senses.Touch){
+        this.recipeList[this.recipeList.length - 1].Touch = 5;
+      } else if (this.illusion == Senses.Smell){
+        this.recipeList[this.recipeList.length - 1].Smell = 5;
+      } else if (this.illusion == Senses.Sight){
+        this.recipeList[this.recipeList.length - 1].Sight = 5;
+      } else if (this.illusion == Senses.Sound){
+        this.recipeList[this.recipeList.length - 1].Sound = 5;
+      }
       if (this.recipeList[this.recipeList.length - 1].Total > this.target ||
         (this.recipeList[this.recipeList.length - 1].Taste <= 0 && this.traits[Senses.Taste]) ||
         (this.recipeList[this.recipeList.length - 1].Touch <= 0 && this.traits[Senses.Touch]) ||

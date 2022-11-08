@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Repo } from './Ingredient-Repo';
 
+export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
+
 export enum FormulaType {
   HealthPotion,
   ManaPotion,

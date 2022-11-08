@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { IngredientsService } from './ingredients.service';
+import { IngredientsService, Rarity } from './ingredients.service';
 import { CombinationService } from './combination.service';
 import { MainLoopService } from './main-loop-service';
 
-
+type Location = '0-Enchanted Forest' | '1-Bone Wastes' | '1-Mushroom Mire' | '2-Ocean Coasts' | '2-Shadow Steppe' | '2-Storm Plains' | '3-Crystalline Forest' |
+  '3-Ice Craggs' | '3-Sulfuric Falls' | '4-Arctic' | '4-Crater' | '4-Dragon Oasis' | '5-Magical Wasteland';
 
 @Component({
   selector: 'app-root',
@@ -33,11 +34,11 @@ export class AppComponent implements OnInit {
     return str;
   }
 
-  setToQuinns(){
+  setToQuinns() {
     for (const ingredient of this.ingredientsService.ingredients) {
       ingredient.Avail = ingredient.Rarity == '9-Common' ? 10 : ingredient.Rarity == '4-Uncommon' ? 4 : ingredient.Rarity == '2-Rare' ? 2 : 1;
     }
-    this.combinationService.updateFormula();    
+    this.combinationService.updateFormula();
   }
 
   allAvailChange(event: Event) {
@@ -56,6 +57,26 @@ export class AppComponent implements OnInit {
     this.combinationService.updateFormula();
   }
 
+  halveInventory() {
+    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
+      this.ingredientsService.ingredients[i].Avail = Math.floor(this.ingredientsService.ingredients[i].Avail / 2);
+    }
+  }
+
+  selectRarityChange(str: Rarity) {
+    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
+      if (this.ingredientsService.ingredients[i].Rarity == str)
+        this.ingredientsService.ingredients[i].Avail = 0;
+    }
+  }
+
+  selectWeekChange(week: number) {
+    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
+      if (parseInt(this.ingredientsService.ingredients[i].Location[0]) >= week)
+        this.ingredientsService.ingredients[i].Avail = 0;
+    }
+  }
+
   ingredCountChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
@@ -70,7 +91,7 @@ export class AppComponent implements OnInit {
     this.resetClick();
   }
 
-  bonusChange(event: Event){
+  bonusChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 10000), 0);
     this.combinationService.shopBonus = numCheck;
@@ -81,9 +102,13 @@ export class AppComponent implements OnInit {
     this.combinationService.filter = !this.combinationService.filter;
   }
 
-  setTrait(sense:number){
+  setTrait(sense: number) {
     this.combinationService.traits[sense] = !this.combinationService.traits[sense];
     this.combinationService.updateFormula();
+  }
+
+  setIllusion(sense: number) {
+    this.combinationService.illusion = this.combinationService.illusion == sense ? 0 : sense;
   }
 
   modeClick() {

@@ -5,18 +5,21 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added better sorting, traits and value. And some fixes. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
-                v.0.1.1 Hover for more</span>
+                matTooltip="Added better sorting, traits and value. And illusions. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
+                v.0.1.2 Hover for more</span>
             <div *ngIf="!mainLoopService.started"> paused</div>
-            <div> {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
-            Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button>
+            <div [matTooltipShowDelay]="500" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
+            <p></p>
+            <!-- Deprecated, but keeping here for possible reference Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button> -->
             <div> Cauldron ingredient target: <input type="number" min="0" max="20" value="{{combinationService.ingredCount}}" (change)="ingredCountChange($event)"></div>
             <div> Cauldron magamin {{combinationService.superMode ? "target: " : "max: "}}<input type="number" min="0" max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
             Formula: <select (change)="percUpdate($event)">
                 <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
                 [selected]="formula.type === ingredientsService.selectedFormula">{{formula.name}}</option>
             </select>
-            <div> Shop % bonus: <input type="number" min="0" max="10000" value="{{combinationService.shopBonus}}" (change)="bonusChange($event)"></div>
+            <div [matTooltipShowDelay]="200" matTooltip="Include an average barter increase and shelf increase">
+                Shop % bonus: <input type="number" min="0" max="10000" value="{{combinationService.shopBonus}}" (change)="bonusChange($event)">
+            </div>
             <p></p>
             <div> Total tries: {{combinationService.totalCount}}</div>
             <div> Recipes found: {{combinationService.hitCount}}</div>
@@ -30,11 +33,31 @@
                 Filter Recipe
                 </button>
                 Add good: 
-                <button (click)="setTrait(combinationService.senses.Taste)" class="{{combinationService.traits[combinationService.senses.Taste] == true ? 'filtered' : ''}}">Taste</button>                
-                <button (click)="setTrait(combinationService.senses.Touch)" class="{{combinationService.traits[combinationService.senses.Touch] == true ? 'filtered' : ''}}">Touch</button>
-                <button (click)="setTrait(combinationService.senses.Smell)" class="{{combinationService.traits[combinationService.senses.Smell] == true ? 'filtered' : ''}}">Smell</button>
-                <button (click)="setTrait(combinationService.senses.Sight)" class="{{combinationService.traits[combinationService.senses.Sight] == true ? 'filtered' : ''}}">Sight</button>
-                <button (click)="setTrait(combinationService.senses.Sound)" class="{{combinationService.traits[combinationService.senses.Sound] == true ? 'filtered' : ''}}">Sound</button>
+                <button (click)="setTrait(combinationService.senses.Taste)" class="{{combinationService.traits[combinationService.senses.Taste] ? 'filtered' : ''}}">Taste</button>                
+                <button (click)="setTrait(combinationService.senses.Touch)" class="{{combinationService.traits[combinationService.senses.Touch] ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setTrait(combinationService.senses.Smell)" class="{{combinationService.traits[combinationService.senses.Smell] ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setTrait(combinationService.senses.Sight)" class="{{combinationService.traits[combinationService.senses.Sight] ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setTrait(combinationService.senses.Sound)" class="{{combinationService.traits[combinationService.senses.Sound] ? 'filtered' : ''}}">Sound</button>
+                <span [matTooltipShowDelay]="200" matTooltip="Note that illusions don't count for orders."> Illusion:
+                <button (click)="setIllusion(combinationService.senses.Taste)" class="{{combinationService.illusion == combinationService.senses.Taste ? 'filtered' : ''}}">Taste</button>                
+                <button (click)="setIllusion(combinationService.senses.Touch)" class="{{combinationService.illusion == combinationService.senses.Touch ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setIllusion(combinationService.senses.Smell)" class="{{combinationService.illusion == combinationService.senses.Smell ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setIllusion(combinationService.senses.Sight)" class="{{combinationService.illusion == combinationService.senses.Sight ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setIllusion(combinationService.senses.Sound)" class="{{combinationService.illusion == combinationService.senses.Sound ? 'filtered' : ''}}">Sound</button>
+                </span>
+            </div>
+            <div>
+                Clear inventory: 
+                <button (click)="halveInventory()">Half</button>
+                <button (click)="selectRarityChange('9-Common')">Common</button>
+                <button (click)="selectRarityChange('4-Uncommon')">Uncommon</button>
+                <button (click)="selectRarityChange('2-Rare')">Rare</button>
+                <button (click)="selectRarityChange('1-Epic')">Epic</button>     
+                <button (click)="selectWeekChange(1)">Midweek 1+</button>         
+                <button (click)="selectWeekChange(2)">Week 2+</button>     
+                <button (click)="selectWeekChange(3)">Week 3+</button>     
+                <button (click)="selectWeekChange(4)">Week 4+</button>     
+                <button (click)="selectWeekChange(5)">Week 5</button>
             </div>
             Change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
             <button (click)="setToQuinns()">Set to Quinn's</button>
