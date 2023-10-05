@@ -206,5 +206,6 @@ Witchbramble Vine,42,42,42,0,42,210,168,0,0,0,0,0,Rare,5-Magical Wasteland,Plant
 Wraith Orchid,0,0,0,12,0,19,12,0,0,0,0,0,Common,1-Mushroom Mire,Flower
 Xeno Noir,66,0,66,33,33,236,198,-5,0,0,0,0,Rare,4-Crater,Fruit
 Xenoplasm,0,55,55,22,0,166,132,0,0,0,-5,5,Rare,4-Crater,Essences
+Yeti Antler,0,0,88,0,0,104,88,-5,0,0,0,0,Common,4-Arctic,Bone
 EndOfLine,,,,,,,,,,,,,,,`;
 }
