@@ -1,5 +1,9 @@
+/** Type for potion ranks, uses the total power to decide rank and associated price mult */
 export type PotionRank = { rank: string, min: number, max: number, mult: number }
 
+/**
+ * This is the repo class for potion ranks. Dynamically calculating the multiplier is much more effective than changing each entry in case of any changes.
+ */
 export class RankRepo {
     ranks: PotionRank[] = [{
         rank: 'Minor 0*',
@@ -222,6 +226,5 @@ export class RankRepo {
         for (let i = 0; i < this.ranks.length; i++) {
             this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.5, Math.floor(i / 6))
         }
-        console.log(this.ranks)
     }
 }

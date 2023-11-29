@@ -3,11 +3,13 @@ import { IngredientsService, IngredientStats, FormulaType } from './ingredients.
 import { MainLoopService } from './main-loop-service';
 import { RankRepo, PotionRank} from './potionRank-Repo';
 
+
 interface Indexer {
   ingredient: number[],
   index: number
 }
 
+/** holds the settings and some user entered data for ingredients */
 interface Data {
   ingredients: IngredientStats[],
   selectedFormula: FormulaType,
@@ -59,6 +61,8 @@ interface Sort {
   descending: boolean;
 }
 
+/** Contains everything from settings to the main combination methods. 
+ * @TODO Split the data portion into a data service.*/
 @Injectable({
   providedIn: 'root'
 })
@@ -110,7 +114,7 @@ export class CombinationService {
   target = 375;
   ingredCount = 8;
   shopBonus = 0;
-  private comboIndex = 0; // only locally used for that damn recursive method.
+  private comboIndex = 0; // only locally used for those two recursive methods. I can't be completely sure of my work.
 
   constructor(
     public mainLoopService: MainLoopService,
@@ -249,7 +253,7 @@ export class CombinationService {
       this.traits = [false,false,false,false,false]
       this.shopBonus = 0;
     }
-    this.ingredientsService.enumerateLocations();
+    this.ingredientsService.enumerateWeekRarity();
   }
 
   clearData() {
@@ -639,6 +643,7 @@ export class CombinationService {
     //DO Combine
     this.joinIngredientsPerfect()
 
+    //
     if (this.indexer[this.comboIndex].index < 0) {
       if (this.comboIndex <= 0) {
         this.mainLoopService.started = false;

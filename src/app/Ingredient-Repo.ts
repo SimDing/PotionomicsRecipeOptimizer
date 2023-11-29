@@ -1,3 +1,6 @@
+/**
+ * This is the repo class for the ingredient CSV import. It's quite literally a copy and paste of an excel sheet, a lot easier than trying to JSON the whole thing every change.
+ */
 export class Repo {  
 ingredientStr = `Name,A,B,C,D,E,Cost,Total Magimin,Taste,Touch,Smell,Sight,Sound,Rarity,Location,Type
 Abominable Tarantula,0,0,0,0,66,105,66,0,0,0,-5,5,Uncommon,4-Arctic,Bug

@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
 import { Repo } from './Ingredient-Repo';
 
+
 export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
+
+/** @TODO Implement */
+type Location = '0-Enchanted Forest' | '1-Bone Wastes' | '1-Mushroom Mire' | '2-Ocean Coasts' | '2-Shadow Steppe' | '2-Storm Plains' | '3-Crystalline Forest' |
+  '3-Ice Craggs' | '3-Sulfuric Falls' | '4-Arctic' | '4-Crater' | '4-Dragon Oasis' | '5-Magical Wasteland';
 
 export enum FormulaType {
   HealthPotion,
@@ -26,6 +31,7 @@ export enum FormulaType {
   CurseCure
 }
 
+/** Interface for the formula templates. */
 export interface Formula {
   type: FormulaType;
   name: string;
@@ -37,6 +43,7 @@ export interface Formula {
   value: number;
 }
 
+/** Interface to house both ingredients and recipes, extended as it made certain operations simpler. */
 export interface IngredientStats {
   index: number;
   name: string;
@@ -55,10 +62,14 @@ export interface IngredientStats {
   Rarity: string;
   Location: string;
   Type: string;
-  Avail: number;
-  recipe: boolean;
+  Avail: number; // Number of this ingredient user has for potionmaking.
+  recipe: boolean; // Whether the interface represents one ingredient or many.
 }
 
+
+/**
+ * This service class contains the formulas repo and preps the ingredient and location data.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -298,7 +309,7 @@ export class IngredientsService {
   constructor(
   ) {
     this.parseCSV();
-    this.enumerateLocations();
+    this.enumerateWeekRarity();
   }
 
   parseCSV(str = this.repo.ingredientStr) {
@@ -334,7 +345,7 @@ export class IngredientsService {
     }
     regex = /([/ \-'’A-z]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([/ \-'’A-z]*),([/ \-'’A-z0-5]*),([/ \-'’A-z]*)[\n|\r]/gi;
     while ((m = regex.exec(str)) != null) {
-      // This is necessary to avoid infinite loops with zero-width matches
+      // This is necessary to avoid infinite loops with zero-width matches (Likely doesn't need this but I don't feel like checking this late)
       if (m.index === regex.lastIndex) {
         regex.lastIndex++;
       }
@@ -362,7 +373,7 @@ export class IngredientsService {
     }
   }
 
-  enumerateLocations(){
+  enumerateWeekRarity() {
     for (const ingredient of this.ingredients) {
       if (ingredient.Location == "Enchanted Forest"){
         ingredient.Location = "0-".concat(ingredient.Location);
