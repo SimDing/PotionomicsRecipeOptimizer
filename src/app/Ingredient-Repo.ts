@@ -202,7 +202,6 @@ Venous Witch-Trap,28,0,70,0,70,214,168,0,0,0,0,0,Uncommon,5-Magical Wasteland,Pl
 Warg Pheromones,12,0,12,0,0,26,24,0,0,0,0,0,Uncommon,1-Mushroom Mire,Essences
 Watchdog Daisy,0,16,0,48,0,83,64,0,0,0,0,0,Common,3-Ice Craggs,Flower
 Weeping Metal Ore,0,32,64,0,0,66,96,0,-5,0,0,0,Common,3-Sulfuric Falls,Ores
-Wendigo Antler,0,0,88,0,0,104,88,-5,0,0,0,0,Common,4-Arctic,Bone
 Widowmaker Pepper,0,44,0,44,0,126,88,0,0,0,0,0,Common,4-Dragon Oasis,Plant
 Winged Gelatin,0,0,0,66,0,103,66,0,5,-5,0,0,Uncommon,4-Arctic,Slime
 Witchbramble Vine,42,42,42,0,42,210,168,0,0,0,0,0,Rare,5-Magical Wasteland,Plant

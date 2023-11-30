@@ -12,7 +12,7 @@
             <p></p>
             <!-- Deprecated, but keeping here for possible reference Mode: <button (click)="modeClick()">{{combinationService.superMode ? "Super" : "Perfect"}}</button> -->
             <div> Cauldron ingredient target: <input type="number" min="0" max="20" value="{{combinationService.ingredCount}}" (change)="ingredCountChange($event)"></div>
-            <div> Cauldron magamin {{combinationService.superMode ? "target: " : "max: "}}<input type="number" min="0" max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
+            <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{combinationService.target}}" (change)="targetChange($event)"></div>
             Formula: <select (change)="formulaUpdate($event)">
                 <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
                 [selected]="formula.type === ingredientsService.selectedFormula">{{formula.name}}</option>

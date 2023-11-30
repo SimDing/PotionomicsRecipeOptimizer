@@ -224,7 +224,8 @@ export class RankRepo {
 
     constructor() {
         for (let i = 0; i < this.ranks.length; i++) {
-            this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.5, Math.floor(i / 6))
+            // TODO: Confirm constants for Ranks and Grades.
+            this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.255, Math.floor(i / 6))
         }
     }
 }

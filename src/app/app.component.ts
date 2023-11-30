@@ -19,7 +19,7 @@ export class AppComponent implements OnInit {
     public ingredientsService: IngredientsService,
     public combinationService: CombinationService
   ) {
-    this.combinationService.superMode ? this.combinationService.buildIngredientsSuper() : this.combinationService.buildIngredientsPerfect();
+    this.combinationService.buildIngredients();
   }
 
   /** Startup */
@@ -127,14 +127,6 @@ export class AppComponent implements OnInit {
   /** Sets desired illusions to include in recipe. */
   setIllusion(sense: number) {
     this.combinationService.illusion = this.combinationService.illusion == sense ? 0 : sense;
-  }
-
-  /** There used to be a bug/unintended feature that would set a potion's 
-   * star to 5 if you perfectly got the magamins on the number just before the next star. 
-   * This is a relic I kept for that. */
-  modeClick() {
-    this.combinationService.superMode = !this.combinationService.superMode;
-    this.combinationService.updateFormula();
   }
 
   /** Flips the start/stop for the combination sim. */
