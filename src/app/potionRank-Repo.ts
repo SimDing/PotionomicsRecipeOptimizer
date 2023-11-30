@@ -224,8 +224,8 @@ export class RankRepo {
 
     constructor() {
         for (let i = 0; i < this.ranks.length; i++) {
-            // TODO: Confirm constants for Ranks and Grades.
-            this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.255, Math.floor(i / 6))
+            // Increases by 1.125 per grade, and 1.25 when moving up a rank. 1.125^5 * 1.25 ~ 2.252540588
+            this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.252540588, Math.floor(i / 6))
         }
     }
 }

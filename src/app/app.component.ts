@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { IngredientsService, Rarity } from './ingredients.service';
-import { CombinationService } from './combination.service';
-import { MainLoopService } from './main-loop-service';
+import { RecipeService } from './recipe.service';
+import { MainLoopService } from './main-loop.service';
+import { DataService } from './data.service';
 
 
 @Component({
@@ -17,20 +18,21 @@ export class AppComponent implements OnInit {
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
-    public combinationService: CombinationService
+    public recipeService: RecipeService,
+    public dataService: DataService
   ) {
-    this.combinationService.buildIngredients();
+    this.recipeService.buildIngredients();
   }
 
   /** Startup */
   ngOnInit(): void {
-    this.combinationService.loadData();
+    this.dataService.loadData();
     this.mainLoopService.start();
   }
 
   /** Changes the sorting in the data service */
   sortCheck(category: number, desc: boolean) {
-    return this.combinationService.sortMode.category == category && this.combinationService.sortMode.descending == desc;
+    return this.ingredientsService.sortMode.category == category && this.ingredientsService.sortMode.descending == desc;
   }
 
   /** Sets the available to the amounts that Quinn will sell in a given day. */
@@ -38,7 +40,7 @@ export class AppComponent implements OnInit {
     for (const ingredient of this.ingredientsService.ingredients) {
       ingredient.Avail = ingredient.Rarity == '9-Common' ? 10 : ingredient.Rarity == '4-Uncommon' ? 4 : ingredient.Rarity == '2-Rare' ? 2 : 1;
     }
-    this.combinationService.updateFormula();
+    this.recipeService.updateFormula();
   }
 
   /** Changes all available to a specific number, generally for zeroing. */
@@ -48,7 +50,7 @@ export class AppComponent implements OnInit {
     for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
       this.ingredientsService.ingredients[i].Avail = numCheck;
     }
-    this.combinationService.updateFormula();
+    this.recipeService.updateFormula();
   }
 
   /** Updates a specific ingredient's available number. */
@@ -56,7 +58,7 @@ export class AppComponent implements OnInit {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
     this.ingredientsService.ingredients[index].Avail = numCheck;
-    this.combinationService.updateFormula();
+    this.recipeService.updateFormula();
   }
 
   /** Halves the current available number for entire inventory. */
@@ -85,8 +87,9 @@ export class AppComponent implements OnInit {
   /** Checks for user changes to ingredient count. */
   ingredCountChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
-    this.combinationService.ingredCount = numCheck;
+    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 2);
+    this.recipeService.ingredCount = numCheck;
+    this.recipeService.ingredCount = numCheck;
     this.resetClick();
   }
 
@@ -94,7 +97,7 @@ export class AppComponent implements OnInit {
   targetChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 2000), 0);
-    this.combinationService.target = numCheck;
+    this.recipeService.target = numCheck;
     this.resetClick();
   }
 
@@ -102,58 +105,58 @@ export class AppComponent implements OnInit {
   bonusChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(event.target.valueAsNumber, 10000), 0);
-    this.combinationService.shopBonus = numCheck;
-    this.combinationService.updateFormula();
+    this.recipeService.shopBonus = numCheck;
+    this.recipeService.updateFormula();
   }
 
   /** Flips the filtration setting. */
   filterRecipe() {
-    this.combinationService.filter = !this.combinationService.filter;
+    this.ingredientsService.filter = !this.ingredientsService.filter;
   }
 
   /** Sets the style for the matching ingredients by recipe depending on filter. */
   ingredCheck(i: number): string {
-    let str = this.combinationService.ingredientList.find((a) => (a.index == i)) ? "GREEN" : "";
-    str = this.combinationService.filter ? str.concat("INVISIBLE") : str;
+    let str = this.recipeService.ingredientList.find((a) => (a.index == i)) ? "GREEN" : "";
+    str = this.ingredientsService.filter ? str.concat("INVISIBLE") : str;
     return str;
   }
 
   /** Sets desired traits to include in recipe. */
   setTrait(sense: number) {
-    this.combinationService.traits[sense] = !this.combinationService.traits[sense];
-    this.combinationService.updateFormula();
+    this.recipeService.traits[sense] = !this.recipeService.traits[sense];
+    this.recipeService.updateFormula();
   }
 
   /** Sets desired illusions to include in recipe. */
   setIllusion(sense: number) {
-    this.combinationService.illusion = this.combinationService.illusion == sense ? 0 : sense;
+    this.recipeService.illusion = this.recipeService.illusion == sense ? 0 : sense;
   }
 
   /** Flips the start/stop for the combination sim. */
   startClick() {
     this.mainLoopService.started = !this.mainLoopService.started;
-    this.combinationService.ingredientSort();
-    this.combinationService.recipeSort();
-    this.combinationService.recipeDisplay();
+    this.ingredientsService.ingredientSort();
+    this.recipeService.recipeSort();
+    this.recipeService.recipeDisplay();
   }
 
   /** Resets the combination sim. */
   resetClick() {
-    this.combinationService.indexerInit();
-    this.combinationService.recipeInit();
+    this.recipeService.indexerInit();
+    this.recipeService.recipeInit();
   }
 
   /** Updates the formula in use. */
   formulaUpdate(event: Event) {
     if (!(event.target instanceof HTMLSelectElement)) return;
-    this.ingredientsService.selectedFormula = parseInt(event.target.value);
-    this.combinationService.updateFormula();
+    this.recipeService.selectedFormula = parseInt(event.target.value);
+    this.recipeService.updateFormula();
   }
 
   /** Displays the profit ratio. */
   recipeRatio(i: number) {
-    const recipe = this.combinationService.recipeListDisplay[i];
-    return Math.floor((recipe.value * this.combinationService.potionCount() - recipe.cost) / recipe.cost * 100) / 100;
+    const recipe = this.recipeService.recipeListDisplay[i];
+    return Math.floor((recipe.value * this.recipeService.potionCount() - recipe.cost) / recipe.cost * 100) / 100;
   }
 
   /* Abandoned the idea of people importing CSV updates, most users would just be confused.

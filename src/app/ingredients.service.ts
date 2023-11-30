@@ -4,9 +4,10 @@ import { Repo } from './Ingredient-Repo';
 
 export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
 
-/** @TODO Implement */
+/** @TODO Implement 
 type Location = '0-Enchanted Forest' | '1-Bone Wastes' | '1-Mushroom Mire' | '2-Ocean Coasts' | '2-Shadow Steppe' | '2-Storm Plains' | '3-Crystalline Forest' |
   '3-Ice Craggs' | '3-Sulfuric Falls' | '4-Arctic' | '4-Crater' | '4-Dragon Oasis' | '5-Magical Wasteland';
+  */
 
 export enum FormulaType {
   HealthPotion,
@@ -66,6 +67,32 @@ export interface IngredientStats {
   recipe: boolean; // Whether the interface represents one ingredient or many.
 }
 
+export enum SortCategory {
+  Index,
+  Name,
+  A,
+  B,
+  C,
+  D,
+  E,
+  Total,
+  Cost,
+  Taste,
+  Touch,
+  Smell,
+  Sight,
+  Sound,
+  Rarity,
+  Location,
+  Type,
+  RankValue
+}
+
+
+export interface Sort {
+  category: SortCategory;
+  descending: boolean;
+}
 
 /**
  * This service class contains the formulas repo and preps the ingredient and location data.
@@ -75,31 +102,7 @@ export interface IngredientStats {
 })
 export class IngredientsService {
 
-  selectedFormula: FormulaType = 0;
-
-  ingredients: IngredientStats[] = [
-    {
-      index: 0,
-      name: "(blank)",
-      A: 0,
-      B: 0,
-      C: 0,
-      D: 0,
-      E: 0,
-      cost: 0,
-      Total: 0,
-      Taste: 0,
-      Touch: 0,
-      Smell: 0,
-      Sight: 0,
-      Sound: 0,
-      Rarity: "",
-      Location: "",
-      Type: "",
-      Avail: 0,
-      recipe: false
-    }
-  ]
+  ingredients: IngredientStats[] = []
 
   formulas: Formula[] = [
     {
@@ -305,6 +308,8 @@ export class IngredientsService {
   ]
 
   repo = new Repo;
+  sortMode: Sort = { category: SortCategory.Name, descending: false };
+  filter = false;
 
   constructor(
   ) {
@@ -312,9 +317,114 @@ export class IngredientsService {
     this.enumerateWeekRarity();
   }
 
+  
+  /** Sorts ingredients. 
+   * @param category Takes a SortCategory, default null
+  */
+  ingredientSort(category: SortCategory | null = null) {
+    if (category) {
+      if (this.sortMode.category == category) {
+        this.sortMode.descending = !this.sortMode.descending;
+      } else {
+        this.sortMode = { category: category, descending: false } as Sort;
+      }
+    }
+
+    if (!this.sortMode.descending) {
+      if (this.sortMode.category == SortCategory.Name) {
+        this.ingredients.sort((a, b) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.A) {
+        this.ingredients.sort((a, b) => a.A - b.A);
+      } else if (this.sortMode.category == SortCategory.B) {
+        this.ingredients.sort((a, b) => a.B - b.B);
+      } else if (this.sortMode.category == SortCategory.C) {
+        this.ingredients.sort((a, b) => a.C - b.C);
+      } else if (this.sortMode.category == SortCategory.D) {
+        this.ingredients.sort((a, b) => a.D - b.D);
+      } else if (this.sortMode.category == SortCategory.E) {
+        this.ingredients.sort((a, b) => a.E - b.E);
+      } else if (this.sortMode.category == SortCategory.Cost) {
+        this.ingredients.sort((a, b) => a.cost - b.cost);
+      } else if (this.sortMode.category == SortCategory.Total) {
+        this.ingredients.sort((a, b) => a.Total - b.Total);
+      } else if (this.sortMode.category == SortCategory.Taste) {
+        this.ingredients.sort((a, b) => a.Taste - b.Taste);
+      } else if (this.sortMode.category == SortCategory.Touch) {
+        this.ingredients.sort((a, b) => a.Touch - b.Touch);
+      } else if (this.sortMode.category == SortCategory.Smell) {
+        this.ingredients.sort((a, b) => a.Smell - b.Smell);
+      } else if (this.sortMode.category == SortCategory.Sight) {
+        this.ingredients.sort((a, b) => a.Sight - b.Sight);
+      } else if (this.sortMode.category == SortCategory.Sound) {
+        this.ingredients.sort((a, b) => a.Sound - b.Sound);
+      } else if (this.sortMode.category == SortCategory.Rarity) {
+        this.ingredients.sort((a, b) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.Location) {
+        this.ingredients.sort((a, b) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.Type) {
+        this.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
+      }
+
+    } else {
+      if (this.sortMode.category == SortCategory.Name) {
+        this.ingredients.sort((b, a) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.A) {
+        this.ingredients.sort((b, a) => a.A - b.A);
+      } else if (this.sortMode.category == SortCategory.B) {
+        this.ingredients.sort((b, a) => a.B - b.B);
+      } else if (this.sortMode.category == SortCategory.C) {
+        this.ingredients.sort((b, a) => a.C - b.C);
+      } else if (this.sortMode.category == SortCategory.D) {
+        this.ingredients.sort((b, a) => a.D - b.D);
+      } else if (this.sortMode.category == SortCategory.E) {
+        this.ingredients.sort((b, a) => a.E - b.E);
+      } else if (this.sortMode.category == SortCategory.Cost) {
+        this.ingredients.sort((b, a) => a.cost - b.cost);
+      } else if (this.sortMode.category == SortCategory.Total) {
+        this.ingredients.sort((b, a) => a.Total - b.Total);
+      } else if (this.sortMode.category == SortCategory.Taste) {
+        this.ingredients.sort((b, a) => a.Taste - b.Taste);
+      } else if (this.sortMode.category == SortCategory.Touch) {
+        this.ingredients.sort((b, a) => a.Touch - b.Touch);
+      } else if (this.sortMode.category == SortCategory.Smell) {
+        this.ingredients.sort((b, a) => a.Smell - b.Smell);
+      } else if (this.sortMode.category == SortCategory.Sight) {
+        this.ingredients.sort((b, a) => a.Sight - b.Sight);
+      } else if (this.sortMode.category == SortCategory.Sound) {
+        this.ingredients.sort((b, a) => a.Sound - b.Sound);
+      } else if (this.sortMode.category == SortCategory.Rarity) {
+        this.ingredients.sort((b, a) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.Location) {
+        this.ingredients.sort((b, a) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
+      } else if (this.sortMode.category == SortCategory.Type) {
+        this.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
+      }
+    }
+  }
+
   parseCSV(str = this.repo.ingredientStr) {
     //init the array
-    this.ingredients = [];
+    this.ingredients = [{
+        index: 0,
+        name: "(blank)",
+        A: 0,
+        B: 0,
+        C: 0,
+        D: 0,
+        E: 0,
+        cost: 0,
+        Total: 0,
+        Taste: 0,
+        Touch: 0,
+        Smell: 0,
+        Sight: 0,
+        Sound: 0,
+        Rarity: "",
+        Location: "",
+        Type: "",
+        Avail: 0,
+        recipe: false
+      }];
     //parse for IngredientStats
     let m;
     let i = 0;

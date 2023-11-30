@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { MainLoopService } from './main-loop-service';
+import { MainLoopService } from './main-loop.service';
 
 describe('MainLoopService', () => {
   let service: MainLoopService;

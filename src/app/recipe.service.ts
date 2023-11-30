@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { IngredientsService, IngredientStats, FormulaType } from './ingredients.service';
-import { MainLoopService } from './main-loop-service';
+import { IngredientsService, IngredientStats } from './ingredients.service';
+import { MainLoopService } from './main-loop.service';
 import { RankRepo, PotionRank } from './potionRank-Repo';
 
 
@@ -9,42 +9,10 @@ interface Indexer {
   index: number
 }
 
-/** holds the settings and some user entered data for ingredients */
-interface Data {
-  ingredients: IngredientStats[],
-  selectedFormula: FormulaType,
-  target: number,
-  ingredCount: number,
-  sortMode: Sort,
-  filter: boolean,
-  traits: boolean[],
-  shopBonus: number
-}
-
 interface Recipe extends IngredientStats {
   rank: PotionRank;
   value: number;
-}
-
-export enum SortCategory {
-  Index,
-  Name,
-  A,
-  B,
-  C,
-  D,
-  E,
-  Total,
-  Cost,
-  Taste,
-  Touch,
-  Smell,
-  Sight,
-  Sound,
-  Rarity,
-  Location,
-  Type,
-  RankValue
+  deviation: number;
 }
 
 enum Senses {
@@ -56,17 +24,12 @@ enum Senses {
   Sound
 }
 
-interface Sort {
-  category: SortCategory;
-  descending: boolean;
-}
-
 /** Contains everything from settings to the main combination methods and all related members. 
  * @TODO Split the data portion into a data service.*/
 @Injectable({
   providedIn: 'root'
 })
-export class CombinationService {
+export class RecipeService {
   rankRepo = new RankRepo;
   recipeList: Recipe[] = [{
     index: 0,
@@ -89,7 +52,8 @@ export class CombinationService {
     Avail: 0,
     recipe: false,
     rank: this.rankRepo.ranks[0],
-    value: 0
+    value: 0,
+    deviation: 0,
   }];
   recipeListDisplay = [...this.recipeList];
 
@@ -99,27 +63,29 @@ export class CombinationService {
   indexer: Indexer[] = [{ index: 0, ingredient: [] }];
   totalCount = 0;
   hitCount = 0;
-  sortMode: Sort = { category: SortCategory.Name, descending: false };
-  filter = false;
   traits = [false, false, false, false, false]
   senses = Senses;
   illusion = 0;
-
   private percA = 50 / 100;
   private percB = 50 / 100;
   private percC = 0 / 100;
   private percD = 0 / 100;
   private percE = 0 / 100;
+  topDeviate = 0.0025 // init to perfection 0.0025
+  bottomDeviate = 0
+  selectedFormula = 0
   target = 375;
   ingredCount = 8;
   shopBonus = 0;
-  private comboIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
+  private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
 
   constructor(
     public mainLoopService: MainLoopService,
-    public ingredientsService: IngredientsService
+    public ingredientsService: IngredientsService, 
   ) {
+    this.topDeviate = 0.05;
     mainLoopService.tickSubject.subscribe(() => {
+      // @TODO Remove need for empty additions to recipe list. Initializers should be part of the recipe building.
       if (this.recipeList.length == 0) {
         this.recipeList.push({
           index: 0,
@@ -142,7 +108,8 @@ export class CombinationService {
           Avail: 0,
           recipe: false,
           rank: this.rankRepo.ranks[0],
-          value: 0
+          value: 0,
+          deviation: 0,
         })
       }
       this.IngredAvail.splice(0);
@@ -150,28 +117,20 @@ export class CombinationService {
       for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) {
         this.IngredAvail.push(this.ingredientsService.ingredients[i].Avail);
       }
-      this.discoverCombinations();
+      this.discoverNewRecipe();
       this.totalCount++;
     });
   }
 
   /** Updates the formula ratios. */
   updateFormula() {
-    this.percA = this.ingredientsService.formulas[this.ingredientsService.selectedFormula].A;
-    this.percB = this.ingredientsService.formulas[this.ingredientsService.selectedFormula].B;
-    this.percC = this.ingredientsService.formulas[this.ingredientsService.selectedFormula].C;
-    this.percD = this.ingredientsService.formulas[this.ingredientsService.selectedFormula].D;
-    this.percE = this.ingredientsService.formulas[this.ingredientsService.selectedFormula].E;
+    this.percA = this.ingredientsService.formulas[this.selectedFormula].A;
+    this.percB = this.ingredientsService.formulas[this.selectedFormula].B;
+    this.percC = this.ingredientsService.formulas[this.selectedFormula].C;
+    this.percD = this.ingredientsService.formulas[this.selectedFormula].D;
+    this.percE = this.ingredientsService.formulas[this.selectedFormula].E;
     this.buildIngredients();
     this.recipeInit();
-  }
-
-  /** Updates the target magamin in this class. 
-   * Seems to be unused since these are public but I'll leave it to keep things from potentially breaking
-   */
-  targetCountUpdate(target: number, count: number) {
-    this.target = target;
-    this.ingredCount = count;
   }
 
   /** Initializes the working index of the search algorithms. */
@@ -213,144 +172,11 @@ export class CombinationService {
       Avail: 0,
       recipe: false,
       rank: this.rankRepo.ranks[0],
-      value: 0
+      value: 0,
+      deviation: 0,
     }];
     this.totalCount = 0;
     this.hitCount = 0;
-  }
-
-  /** Saves settings and inventory counts. */
-  saveData() {
-    const data: Data = {
-      selectedFormula: this.ingredientsService.selectedFormula,
-      target: this.target,
-      ingredCount: this.ingredCount,
-      ingredients: this.ingredientsService.ingredients,
-      sortMode: this.sortMode,
-      filter: this.filter,
-      traits: this.traits,
-      shopBonus: this.shopBonus
-    }
-    window.localStorage.setItem("AvailableIngredients", JSON.stringify(data))
-  }
-
-  /** Loads settings and inventory counts. */
-  loadData() {
-    const str = window.localStorage.getItem("AvailableIngredients");
-    if (!this.ingredientsService.ingredients.length || this.ingredientsService.ingredients.length < 2) {
-      this.ingredientsService.parseCSV()
-    }
-    if (str) {
-      const data = JSON.parse(str) as Data;
-      this.ingredientsService.selectedFormula = data.selectedFormula || 0;
-      this.target = data.target || 375;
-      this.ingredCount = data.ingredCount || 8;
-      this.ingredientsService.ingredients = data.ingredients || [];
-      this.sortMode = data.sortMode || { category: SortCategory.Name, descending: false };
-      this.filter = data.filter || false;
-      this.traits = data.traits || [false, false, false, false, false];
-      this.shopBonus = data.shopBonus || 0;
-      this.updateFormula();
-    } else {
-      this.ingredientsService.selectedFormula = 0;
-      this.target = 375;
-      this.ingredCount = 8;
-      this.sortMode = { category: SortCategory.Name, descending: false };
-      this.filter = false;
-      this.traits = [false, false, false, false, false]
-      this.shopBonus = 0;
-    }
-    this.ingredientsService.enumerateWeekRarity();
-  }
-
-  /** Removes all settings. */
-  clearData() {
-    window.localStorage.removeItem("AvailableIngredients");
-    this.loadData();
-  }
-
-  /** Sorts ingredients. 
-   * @param category Takes a SortCategory, default null
-  */
-  ingredientSort(category: SortCategory | null = null) {
-    if (category) {
-      if (this.sortMode.category == category) {
-        this.sortMode.descending = !this.sortMode.descending;
-      } else {
-        this.sortMode = { category: category, descending: false } as Sort;
-      }
-    }
-
-    if (!this.sortMode.descending) {
-      if (this.sortMode.category == SortCategory.Name) {
-        this.ingredientsService.ingredients.sort((a, b) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.A) {
-        this.ingredientsService.ingredients.sort((a, b) => a.A - b.A);
-      } else if (this.sortMode.category == SortCategory.B) {
-        this.ingredientsService.ingredients.sort((a, b) => a.B - b.B);
-      } else if (this.sortMode.category == SortCategory.C) {
-        this.ingredientsService.ingredients.sort((a, b) => a.C - b.C);
-      } else if (this.sortMode.category == SortCategory.D) {
-        this.ingredientsService.ingredients.sort((a, b) => a.D - b.D);
-      } else if (this.sortMode.category == SortCategory.E) {
-        this.ingredientsService.ingredients.sort((a, b) => a.E - b.E);
-      } else if (this.sortMode.category == SortCategory.Cost) {
-        this.ingredientsService.ingredients.sort((a, b) => a.cost - b.cost);
-      } else if (this.sortMode.category == SortCategory.Total) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Total - b.Total);
-      } else if (this.sortMode.category == SortCategory.Taste) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Taste - b.Taste);
-      } else if (this.sortMode.category == SortCategory.Touch) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Touch - b.Touch);
-      } else if (this.sortMode.category == SortCategory.Smell) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Smell - b.Smell);
-      } else if (this.sortMode.category == SortCategory.Sight) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Sight - b.Sight);
-      } else if (this.sortMode.category == SortCategory.Sound) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Sound - b.Sound);
-      } else if (this.sortMode.category == SortCategory.Rarity) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Location) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Type) {
-        this.ingredientsService.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
-      }
-
-    } else {
-      if (this.sortMode.category == SortCategory.Name) {
-        this.ingredientsService.ingredients.sort((b, a) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.A) {
-        this.ingredientsService.ingredients.sort((b, a) => a.A - b.A);
-      } else if (this.sortMode.category == SortCategory.B) {
-        this.ingredientsService.ingredients.sort((b, a) => a.B - b.B);
-      } else if (this.sortMode.category == SortCategory.C) {
-        this.ingredientsService.ingredients.sort((b, a) => a.C - b.C);
-      } else if (this.sortMode.category == SortCategory.D) {
-        this.ingredientsService.ingredients.sort((b, a) => a.D - b.D);
-      } else if (this.sortMode.category == SortCategory.E) {
-        this.ingredientsService.ingredients.sort((b, a) => a.E - b.E);
-      } else if (this.sortMode.category == SortCategory.Cost) {
-        this.ingredientsService.ingredients.sort((b, a) => a.cost - b.cost);
-      } else if (this.sortMode.category == SortCategory.Total) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Total - b.Total);
-      } else if (this.sortMode.category == SortCategory.Taste) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Taste - b.Taste);
-      } else if (this.sortMode.category == SortCategory.Touch) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Touch - b.Touch);
-      } else if (this.sortMode.category == SortCategory.Smell) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Smell - b.Smell);
-      } else if (this.sortMode.category == SortCategory.Sight) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Sight - b.Sight);
-      } else if (this.sortMode.category == SortCategory.Sound) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Sound - b.Sound);
-      } else if (this.sortMode.category == SortCategory.Rarity) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Location) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Type) {
-        this.ingredientsService.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
-      }
-    }
   }
 
   /** Sorts the results of the sim prior to display, currently according to profit */
@@ -370,7 +196,7 @@ export class CombinationService {
    * @param stats The recipe in need of a rank and value update
    */
   recipeRank(stats: Recipe) {
-    const formula = this.ingredientsService.formulas[this.ingredientsService.selectedFormula];
+    const formula = this.ingredientsService.formulas[this.selectedFormula];
     const ranks = this.rankRepo.ranks;
     for (let i = 0; i < this.rankRepo.ranks.length - 1; i++) {
       if (ranks[i].min <= stats.Total && stats.Total < ranks[i].max) {
@@ -393,7 +219,7 @@ export class CombinationService {
    * @param arr the list of ingredients to consider. defaults to ingredients stored in ingredients service
   */
   buildIngredients(arr: IngredientStats[] = this.ingredientsService.ingredients) {
-    let percAtoE = 0; // Init the deviation variable
+    let deviation = 0; // Init the deviation variable
     this.ingredientList = JSON.parse(JSON.stringify(arr)); // Deep copy the input 
     let i = this.ingredientList.length;
     const validA = this.percA > 0;
@@ -407,7 +233,7 @@ export class CombinationService {
     this.ingredientList.sort((a, b) => a.Total - b.Total);
     while (i > 0) {
       i--;
-      percAtoE = // Measure if an ingredient goes over the maximum viable for the target
+      deviation = // Measure if an ingredient goes over the maximum viable for the target
         Math.max((this.ingredientList[i].A / this.target) - this.percA, 0) +
         Math.max((this.ingredientList[i].B / this.target) - this.percB, 0) +
         Math.max((this.ingredientList[i].C / this.target) - this.percC, 0) +
@@ -415,7 +241,7 @@ export class CombinationService {
         Math.max((this.ingredientList[i].E / this.target) - this.percE, 0);
 
       // @TODO make this threshold dynamic based on user input.
-      if (percAtoE > 0.0025 || // Remove ingredients that don't match filters and deviate too far.
+      if (deviation > this.topDeviate || // Remove ingredients that don't match filters and deviate too far.
         (this.ingredientList[i].Taste < 0 && this.traits[Senses.Taste]) ||
         (this.ingredientList[i].Touch < 0 && this.traits[Senses.Touch]) ||
         (this.ingredientList[i].Smell < 0 && this.traits[Senses.Smell]) ||
@@ -440,17 +266,15 @@ export class CombinationService {
    * @returns Index of the ingredient, or -1 if none fit.
    * @TODO create params for one time or short use recursion variables and move all recipe changes here for better logic control.
   */
-  joinIngredients(): number {
-    let percAtoE = 0; // Going to need to check for recipe deviation this time
-    const arr = this.indexer[this.comboIndex];
-    const recipe = this.recipeList[this.recipeList.length - 1];
+  findIngredient(recipe: Recipe, pos: Indexer ): number {
+    let deviation; // Going to need to check for recipe deviation this time
 
-    while (arr.index >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
-      if (!this.IngredAvail[this.ingredientList[arr.index].index]) { // Ignore ingredients that have no availability count left
-        arr.index--;
+    while (pos.index >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
+      if (!this.IngredAvail[this.ingredientList[pos.index].index]) { // Ignore ingredients that have no availability count left
+        pos.index--;
         continue;
       }
-      const ingredient = this.ingredientList[arr.index];
+      const ingredient = this.ingredientList[pos.index];
       const A = ingredient.A;
       const B = ingredient.B;
       const C = ingredient.C;
@@ -459,15 +283,15 @@ export class CombinationService {
       const Total = ingredient.Total;
 
       // If the final ingredient is added, change from max magamin to the totals in the recipe and get updated ratios.
-      if (this.comboIndex >= this.ingredCount - 1) {
-        percAtoE =
+      if (this.slotIndex >= this.ingredCount - 1) {
+        deviation =
           Math.max(((recipe.A + A) / (recipe.Total + Total)) - this.percA, 0) +
           Math.max(((recipe.B + B) / (recipe.Total + Total)) - this.percB, 0) +
           Math.max(((recipe.C + C) / (recipe.Total + Total)) - this.percC, 0) +
           Math.max(((recipe.D + D) / (recipe.Total + Total)) - this.percD, 0) +
           Math.max(((recipe.E + E) / (recipe.Total + Total)) - this.percE, 0);
       } else {
-        percAtoE =
+        deviation =
           Math.max(((recipe.A + A) / this.target) - this.percA, 0) +
           Math.max(((recipe.B + B) / this.target) - this.percB, 0) +
           Math.max(((recipe.C + C) / this.target) - this.percC, 0) +
@@ -478,10 +302,10 @@ export class CombinationService {
       // Skip deviant ingredients and ingredients that go over magamin count. The lowest total magamin is 4 
       // so this will also remove earlier ingredients that go over by assuming all the later ingredients total 4.
       // @TODO make this minimum more dynamic based on the available inventory.
-      if (percAtoE > 0.0025 || ((this.ingredCount - 1 - this.comboIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
-        arr.index--;
+      if (deviation > this.topDeviate || deviation < this.bottomDeviate || ((this.ingredCount - 1 - this.slotIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
+        pos.index--;
       } else {
-        if (this.comboIndex != 0) {
+        if (this.slotIndex != 0) {
           recipe.name += ", ";
         }
         recipe.name += ingredient.name;
@@ -502,32 +326,42 @@ export class CombinationService {
       }
     }
 
-    return arr.index;
+    return pos.index;
+  }
+
+  /** Adds an ingredient to the recipe
+   * @TODO actually do something
+   */
+  addIngredient() {
+    const recipe = this.recipeList[this.recipeList.length - 1];
+    const pos = this.indexer[this.slotIndex];
+    const index = this.findIngredient(recipe, pos);
+    return index;
   }
 
   /** Controls the flow of the recipe search */
-  discoverCombinations() {
+  discoverNewRecipe() {
 
     // Combine a new ingredient into the recipe
-    this.joinIngredients()
+    this.addIngredient();
 
     // @TODO This doesn't use any returned error or recipe, need to improve architecture and detach indices.
     // Check if the current ingredient slot returned nothing
-    if (this.indexer[this.comboIndex].index < 0) {
-      if (this.comboIndex <= 0) { // If the first slot returns nothing then we're done.
+    if (this.indexer[this.slotIndex].index < 0) {
+      if (this.slotIndex <= 0) { // If the first slot returns nothing then we're done.
         this.mainLoopService.started = false;
-        this.ingredientSort();
+        this.ingredientsService.ingredientSort();
         this.recipeSort();
         this.recipeDisplay();
         return;
       }
-      this.indexer[this.comboIndex - 1].index--; // reduce the index of this slot and fill the indices of later slots.
-      for (let j = this.comboIndex; j < this.ingredCount; j++) {
-        this.indexer[j].index = this.indexer[this.comboIndex - 1].index;
+      this.indexer[this.slotIndex - 1].index--; // reduce the index of this slot and fill the indices of later slots.
+      for (let j = this.slotIndex; j < this.ingredCount; j++) {
+        this.indexer[j].index = this.indexer[this.slotIndex - 1].index;
       }
       // @TODO remove the need to pop an unclean recipe, should add the recipe returned from join unless it returns -1.
       // Now remove the bad recipe, initialize a new one, and return to top
-      this.comboIndex--;
+      this.slotIndex--;
       this.recipeList.pop();
       this.recipeList.push({
         index: 0,
@@ -550,15 +384,16 @@ export class CombinationService {
         Avail: 0,
         recipe: false,
         rank: this.rankRepo.ranks[0],
-        value: 0
+        value: 0,
+        deviation: 0,
       })
       return;
     }
 
     // @TODO Move illusion changes and slot based checks into join.
     // Check if we've reached the final slot
-    if (this.comboIndex >= this.ingredCount - 1) {
-      this.indexer[this.comboIndex].index--;
+    if (this.slotIndex >= this.ingredCount - 1) {
+      this.indexer[this.slotIndex].index--;
       if (this.illusion == Senses.Taste) {
         this.recipeList[this.recipeList.length - 1].Taste = 5;
       } else if (this.illusion == Senses.Touch) {
@@ -608,16 +443,17 @@ export class CombinationService {
         Avail: 0,
         recipe: false,
         rank: this.rankRepo.ranks[0],
-        value: 0
+        value: 0,
+        deviation: 0,
       })
     } else {
       // @TODO improve recursion based on new knowledge and growth  
       // Recursively move to the next slot. Good for dynamic depth.
-      this.comboIndex++;
-      this.discoverCombinations();
+      this.slotIndex++;
+      this.discoverNewRecipe();
     }
     // If we're here then we're shooting to the top of the chain to check frame time and for a new round.
-    this.comboIndex = 0;
+    this.slotIndex = 0;
   }
 
 }
@@ -625,9 +461,9 @@ export class CombinationService {
 /** There used to be a bug/unintended feature that would set a potion's
  * star to 5 if you perfectly got the magamins on the number just before the next star. 
  * This is a relic I kept for that. 
- * Kept for posterity. @see buildIngredientsPerfect
+ * Kept for posterity. @see buildIngredients
 buildIngredientsSuper(arr: IngredientStats[] = this.ingredientsService.ingredients) {
-  let percAtoE = 0;
+  let deviation = 0;
   this.ingredientList = JSON.parse(JSON.stringify(arr));
   let i = this.ingredientList.length;
   const validA = this.percA > 0;
@@ -641,14 +477,14 @@ buildIngredientsSuper(arr: IngredientStats[] = this.ingredientsService.ingredien
   this.ingredientList.sort((a, b) => a.Total - b.Total);
   while (i > 0) {
     i--;
-    percAtoE =
+    deviation =
       Math.max((this.ingredientList[i].A / this.target) - this.percA, 0) +
       Math.max((this.ingredientList[i].B / this.target) - this.percB, 0) +
       Math.max((this.ingredientList[i].C / this.target) - this.percC, 0) +
       Math.max((this.ingredientList[i].D / this.target) - this.percD, 0) +
       Math.max((this.ingredientList[i].E / this.target) - this.percE, 0);
 
-    if (percAtoE > 0.051 ||
+    if (deviation > 0.051 ||
       (this.ingredientList[i].Taste < 0 && this.traits[Senses.Taste]) ||
       (this.ingredientList[i].Touch < 0 && this.traits[Senses.Touch]) ||
       (this.ingredientList[i].Smell < 0 && this.traits[Senses.Smell]) ||
@@ -669,9 +505,9 @@ buildIngredientsSuper(arr: IngredientStats[] = this.ingredientsService.ingredien
   this.indexerInit();
 }
 
-Kept for posterity. @see joinIngredientsPerfect
+Kept for posterity. @see findIngredient
 joinIngredientsSuper(): number {
-  let percAtoE = 0;
+  let deviation = 0;
   const arr = this.indexer[this.comboIndex];
   const recipe = this.recipeList[this.recipeList.length - 1];
 
@@ -681,13 +517,13 @@ joinIngredientsSuper(): number {
       continue;
     }
     const ingredient = this.ingredientList[arr.index];
-    percAtoE =
+    deviation =
       Math.max(((recipe.A + ingredient.A) / this.target) - this.percA, 0) +
       Math.max(((recipe.B + ingredient.B) / this.target) - this.percB, 0) +
       Math.max(((recipe.C + ingredient.C) / this.target) - this.percC, 0) +
       Math.max(((recipe.D + ingredient.D) / this.target) - this.percD, 0) +
       Math.max(((recipe.E + ingredient.E) / this.target) - this.percE, 0);
-    if (percAtoE > 0.051 || ((this.ingredCount - 1 - this.comboIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
+    if (deviation > 0.051 || ((this.ingredCount - 1 - this.comboIndex) * 4 + recipe.Total + ingredient.Total > this.target)) {
       arr.index--;
     } else {
       if (this.comboIndex != 0) {
@@ -713,7 +549,7 @@ joinIngredientsSuper(): number {
   return arr.index;
 }
 
-Kept for posterity. @see discoverIngredientsPerfect
+Kept for posterity. @see discoverIngredients
 discoverCombinationsSuper() {
 
   //DO Combine
