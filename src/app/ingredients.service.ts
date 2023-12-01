@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Repo } from './Ingredient-Repo';
+import { Repo } from './Ingredients.repo';
 
 
 export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
@@ -44,10 +44,15 @@ export interface Formula {
   value: number;
 }
 
-/** Interface to house both ingredients and recipes, extended as it made certain operations simpler. */
-export interface IngredientStats {
-  index: number;
+
+export interface IngredientCount {
   name: string;
+  Avail: number; // Number of this ingredient user has for potionmaking.
+}
+
+/** Interface to house both ingredients and recipes, extended as it made certain operations simpler. */
+export interface IngredientStats extends IngredientCount {
+  index: number;
   A: number;
   B: number;
   C: number;
@@ -63,9 +68,8 @@ export interface IngredientStats {
   Rarity: string;
   Location: string;
   Type: string;
-  Avail: number; // Number of this ingredient user has for potionmaking.
-  recipe: boolean; // Whether the interface represents one ingredient or many.
 }
+
 
 export enum SortCategory {
   Index,
@@ -313,11 +317,11 @@ export class IngredientsService {
 
   constructor(
   ) {
-    this.parseCSV();
+    this.parseTSV();
     this.enumerateWeekRarity();
   }
 
-  
+
   /** Sorts ingredients. 
    * @param category Takes a SortCategory, default null
   */
@@ -331,103 +335,117 @@ export class IngredientsService {
     }
 
     if (!this.sortMode.descending) {
-      if (this.sortMode.category == SortCategory.Name) {
-        this.ingredients.sort((a, b) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.A) {
-        this.ingredients.sort((a, b) => a.A - b.A);
-      } else if (this.sortMode.category == SortCategory.B) {
-        this.ingredients.sort((a, b) => a.B - b.B);
-      } else if (this.sortMode.category == SortCategory.C) {
-        this.ingredients.sort((a, b) => a.C - b.C);
-      } else if (this.sortMode.category == SortCategory.D) {
-        this.ingredients.sort((a, b) => a.D - b.D);
-      } else if (this.sortMode.category == SortCategory.E) {
-        this.ingredients.sort((a, b) => a.E - b.E);
-      } else if (this.sortMode.category == SortCategory.Cost) {
-        this.ingredients.sort((a, b) => a.cost - b.cost);
-      } else if (this.sortMode.category == SortCategory.Total) {
-        this.ingredients.sort((a, b) => a.Total - b.Total);
-      } else if (this.sortMode.category == SortCategory.Taste) {
-        this.ingredients.sort((a, b) => a.Taste - b.Taste);
-      } else if (this.sortMode.category == SortCategory.Touch) {
-        this.ingredients.sort((a, b) => a.Touch - b.Touch);
-      } else if (this.sortMode.category == SortCategory.Smell) {
-        this.ingredients.sort((a, b) => a.Smell - b.Smell);
-      } else if (this.sortMode.category == SortCategory.Sight) {
-        this.ingredients.sort((a, b) => a.Sight - b.Sight);
-      } else if (this.sortMode.category == SortCategory.Sound) {
-        this.ingredients.sort((a, b) => a.Sound - b.Sound);
-      } else if (this.sortMode.category == SortCategory.Rarity) {
-        this.ingredients.sort((a, b) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Location) {
-        this.ingredients.sort((a, b) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Type) {
-        this.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
+      switch (this.sortMode.category) {
+        case SortCategory.Name:
+          this.ingredients.sort((a, b) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
+          break;
+        case SortCategory.A:
+          this.ingredients.sort((a, b) => a.A - b.A);
+          break;
+        case SortCategory.B:
+          this.ingredients.sort((a, b) => a.B - b.B);
+          break;
+        case SortCategory.C:
+          this.ingredients.sort((a, b) => a.C - b.C);
+          break;
+        case SortCategory.D:
+          this.ingredients.sort((a, b) => a.D - b.D);
+          break;
+        case SortCategory.E:
+          this.ingredients.sort((a, b) => a.E - b.E);
+          break;
+        case SortCategory.Cost:
+          this.ingredients.sort((a, b) => a.cost - b.cost);
+          break;
+        case SortCategory.Total:
+          this.ingredients.sort((a, b) => a.Total - b.Total);
+          break;
+        case SortCategory.Taste:
+          this.ingredients.sort((a, b) => a.Taste - b.Taste);
+          break;
+        case SortCategory.Touch:
+          this.ingredients.sort((a, b) => a.Touch - b.Touch);
+          break;
+        case SortCategory.Smell:
+          this.ingredients.sort((a, b) => a.Smell - b.Smell);
+          break;
+        case SortCategory.Sight:
+          this.ingredients.sort((a, b) => a.Sight - b.Sight);
+          break;
+        case SortCategory.Sound:
+          this.ingredients.sort((a, b) => a.Sound - b.Sound);
+          break;
+        case SortCategory.Rarity:
+          this.ingredients.sort((a, b) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
+          break;
+        case SortCategory.Location:
+          this.ingredients.sort((a, b) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
+          break;
+        case SortCategory.Type:
+          this.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1); 
+          break;
       }
 
     } else {
-      if (this.sortMode.category == SortCategory.Name) {
-        this.ingredients.sort((b, a) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.A) {
-        this.ingredients.sort((b, a) => a.A - b.A);
-      } else if (this.sortMode.category == SortCategory.B) {
-        this.ingredients.sort((b, a) => a.B - b.B);
-      } else if (this.sortMode.category == SortCategory.C) {
-        this.ingredients.sort((b, a) => a.C - b.C);
-      } else if (this.sortMode.category == SortCategory.D) {
-        this.ingredients.sort((b, a) => a.D - b.D);
-      } else if (this.sortMode.category == SortCategory.E) {
-        this.ingredients.sort((b, a) => a.E - b.E);
-      } else if (this.sortMode.category == SortCategory.Cost) {
-        this.ingredients.sort((b, a) => a.cost - b.cost);
-      } else if (this.sortMode.category == SortCategory.Total) {
-        this.ingredients.sort((b, a) => a.Total - b.Total);
-      } else if (this.sortMode.category == SortCategory.Taste) {
-        this.ingredients.sort((b, a) => a.Taste - b.Taste);
-      } else if (this.sortMode.category == SortCategory.Touch) {
-        this.ingredients.sort((b, a) => a.Touch - b.Touch);
-      } else if (this.sortMode.category == SortCategory.Smell) {
-        this.ingredients.sort((b, a) => a.Smell - b.Smell);
-      } else if (this.sortMode.category == SortCategory.Sight) {
-        this.ingredients.sort((b, a) => a.Sight - b.Sight);
-      } else if (this.sortMode.category == SortCategory.Sound) {
-        this.ingredients.sort((b, a) => a.Sound - b.Sound);
-      } else if (this.sortMode.category == SortCategory.Rarity) {
-        this.ingredients.sort((b, a) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Location) {
-        this.ingredients.sort((b, a) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
-      } else if (this.sortMode.category == SortCategory.Type) {
-        this.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
+      switch (this.sortMode.category) {
+        case SortCategory.Name:
+          this.ingredients.sort((b, a) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
+          break;
+        case SortCategory.A:
+          this.ingredients.sort((b, a) => a.A - b.A);
+          break;
+        case SortCategory.B:
+          this.ingredients.sort((b, a) => a.B - b.B);
+          break;
+        case SortCategory.C:
+          this.ingredients.sort((b, a) => a.C - b.C);
+          break;
+        case SortCategory.D:
+          this.ingredients.sort((b, a) => a.D - b.D);
+          break;
+        case SortCategory.E:
+          this.ingredients.sort((b, a) => a.E - b.E);
+          break;
+        case SortCategory.Cost:
+          this.ingredients.sort((b, a) => a.cost - b.cost);
+          break;
+        case SortCategory.Total:
+          this.ingredients.sort((b, a) => a.Total - b.Total);
+          break;
+        case SortCategory.Taste:
+          this.ingredients.sort((b, a) => a.Taste - b.Taste);
+          break;
+        case SortCategory.Touch:
+          this.ingredients.sort((b, a) => a.Touch - b.Touch);
+          break;
+        case SortCategory.Smell:
+          this.ingredients.sort((b, a) => a.Smell - b.Smell);
+          break;
+        case SortCategory.Sight:
+          this.ingredients.sort((b, a) => a.Sight - b.Sight);
+          break;
+        case SortCategory.Sound:
+          this.ingredients.sort((b, a) => a.Sound - b.Sound);
+          break;
+        case SortCategory.Rarity:
+          this.ingredients.sort((b, a) => a.Rarity < b.Rarity ? -1 : a.Rarity == b.Rarity ? 0 : 1);
+          break;
+        case SortCategory.Location:
+          this.ingredients.sort((b, a) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
+          break;
+        case SortCategory.Type:
+          this.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1); 
+          break;
       }
     }
   }
 
-  parseCSV(str = this.repo.ingredientStr) {
+  parseTSV(str = this.repo.ingredientStr) {
     //init the array
-    this.ingredients = [{
-        index: 0,
-        name: "(blank)",
-        A: 0,
-        B: 0,
-        C: 0,
-        D: 0,
-        E: 0,
-        cost: 0,
-        Total: 0,
-        Taste: 0,
-        Touch: 0,
-        Smell: 0,
-        Sight: 0,
-        Sound: 0,
-        Rarity: "",
-        Location: "",
-        Type: "",
-        Avail: 0,
-        recipe: false
-      }];
+    this.ingredients = [];
     //parse for IngredientStats
     let m;
-    let i = 0;
+    let i = 1;
     const tempStats: IngredientStats = {
       index: 0,
       name: "",
@@ -447,18 +465,13 @@ export class IngredientsService {
       Location: "",
       Type: "",
       Avail: 0,
-      recipe: false
     };
-    let regex = /Name,A,B,C,D,E,Cost,Total Magimin,Taste,Touch,Smell,Sight,Sound,Rarity,Location,Type\n/gm 
+    let regex = /Name\tA\tB\tC\tD\tE\tCost\tTotal Magimin\tTaste\tTouch\tSmell\tSight\tSound\tRarity\tLocation\tType\n/gm
     if ((m = regex.exec(str)) == null) {
       return;
     }
-    regex = /([/ \-'’A-z]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([-0-9]*),([/ \-'’A-z]*),([/ \-'’A-z0-5]*),([/ \-'’A-z]*)[\n|\r]/gi;
+    regex = /([ \-'’A-z]*)\t([0-9]*)\t([0-9]*)\t([0-9]*)\t([0-9]*)\t([0-9]*)\t([0-9]*)\t([0-9]*)\t([-0-9]*)\t([-0-9]*)\t([-0-9]*)\t([-0-9]*)\t([-0-9]*)\t([ \-'’A-z]*)\t([ \-'’A-z0-5]*)\t([ \-'’A-z]*)[\n|\r]?/gi;
     while ((m = regex.exec(str)) != null) {
-      // This is necessary to avoid infinite loops with zero-width matches (Likely doesn't need this but I don't feel like checking this late)
-      if (m.index === regex.lastIndex) {
-        regex.lastIndex++;
-      }
       if (!m[2]) continue;
       tempStats.index = i;
       tempStats.name = m[1];
@@ -485,28 +498,28 @@ export class IngredientsService {
 
   enumerateWeekRarity() {
     for (const ingredient of this.ingredients) {
-      if (ingredient.Location == "Enchanted Forest"){
+      if (ingredient.Location == "Enchanted Forest") {
         ingredient.Location = "0-".concat(ingredient.Location);
-      } else if (ingredient.Location == ("Bone Wastes" || "Mushroom Mire")){
+      } else if (ingredient.Location == ("Bone Wastes" || "Mushroom Mire")) {
         ingredient.Location = "1-".concat(ingredient.Location);
-      } else if (ingredient.Location == ("Ocean Coasts" || "Shadow Steppe" || "Storm Plains")){
+      } else if (ingredient.Location == ("Ocean Coasts" || "Shadow Steppe" || "Storm Plains")) {
         ingredient.Location = "2-".concat(ingredient.Location);
-      } else if (ingredient.Location == ("Crystalline Forest" || "Ice Craggs" || "Sulfuric Falls")){
+      } else if (ingredient.Location == ("Crystalline Forest" || "Ice Craggs" || "Sulfuric Falls")) {
         ingredient.Location = "3-".concat(ingredient.Location);
-      } else if (ingredient.Location == ("Arctic" || "Crater" || "Dragon Oasis")){
+      } else if (ingredient.Location == ("Arctic" || "Crater" || "Dragon Oasis")) {
         ingredient.Location = "4-".concat(ingredient.Location);
-      } else if (ingredient.Location == "Magical Wasteland"){
+      } else if (ingredient.Location == "Magical Wasteland") {
         ingredient.Location = "5-".concat(ingredient.Location);
       }
-      if (ingredient.Rarity == "Common"){
+      if (ingredient.Rarity == "Common") {
         ingredient.Rarity = "9-".concat(ingredient.Rarity);
-      } else if (ingredient.Rarity == "Uncommon"){
+      } else if (ingredient.Rarity == "Uncommon") {
         ingredient.Rarity = "4-".concat(ingredient.Rarity);
-      } else if (ingredient.Rarity == "Rare"){
+      } else if (ingredient.Rarity == "Rare") {
         ingredient.Rarity = "2-".concat(ingredient.Rarity);
-      } else if (ingredient.Rarity == "Epic"){
+      } else if (ingredient.Rarity == "Epic") {
         ingredient.Rarity = "1-".concat(ingredient.Rarity);
-      } 
-    } 
+      }
+    }
   }
 }

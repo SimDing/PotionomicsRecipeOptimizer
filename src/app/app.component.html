@@ -5,16 +5,21 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added better sorting, traits and value. And illusions. I only did this for fun and for my own use, sharing it was an afterthought so don't expect clean updates.">
-                v.0.1.2 Hover for more</span>
+                matTooltip="Added quality selection. Bugfixes for multiple traits, price increase for Rank, wild empty recipe.">
+                v.0.2.0 Hover for more</span>
             <div *ngIf="!mainLoopService.started"> paused</div>
-            <div [matTooltipShowDelay]="500" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
-            <p></p>
+            <div [matTooltipShowDelay]="1000" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
+            &nbsp;
             <div> Cauldron ingredient target: <input type="number" min="2" max="20" value="{{recipeService.ingredCount}}" (change)="ingredCountChange($event)"></div>
             <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{recipeService.target}}" (change)="targetChange($event)"></div>
             Formula: <select (change)="formulaUpdate($event)">
                 <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
                 [selected]="formula.type === recipeService.selectedFormula">{{formula.name}}</option>
+            </select>
+            <div></div>
+            Minimum Quality: <select (change)="qualityUpdate($event)">
+                <option *ngFor="let quality of qualitySelection" value="{{quality}}"
+                [selected]="quality === recipeService.selectedQuality">{{quality}}</option>
             </select>
             <div [matTooltipShowDelay]="200" matTooltip="Include an average barter increase and shelf increase">
                 Shop % bonus: <input type="number" min="0" max="10000" value="{{recipeService.shopBonus}}" (change)="bonusChange($event)">
@@ -32,17 +37,17 @@
                 Filter Recipe
                 </button>
                 Add good: 
-                <button (click)="setTrait(recipeService.senses.Taste)" class="{{recipeService.traits[recipeService.senses.Taste] ? 'filtered' : ''}}">Taste</button>                
-                <button (click)="setTrait(recipeService.senses.Touch)" class="{{recipeService.traits[recipeService.senses.Touch] ? 'filtered' : ''}}">Touch</button>
-                <button (click)="setTrait(recipeService.senses.Smell)" class="{{recipeService.traits[recipeService.senses.Smell] ? 'filtered' : ''}}">Smell</button>
-                <button (click)="setTrait(recipeService.senses.Sight)" class="{{recipeService.traits[recipeService.senses.Sight] ? 'filtered' : ''}}">Sight</button>
-                <button (click)="setTrait(recipeService.senses.Sound)" class="{{recipeService.traits[recipeService.senses.Sound] ? 'filtered' : ''}}">Sound</button>
+                <button (click)="setTrait(senses.Taste)" class="{{recipeService.traits[senses.Taste] ? 'filtered' : ''}}">Taste</button>                
+                <button (click)="setTrait(senses.Touch)" class="{{recipeService.traits[senses.Touch] ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setTrait(senses.Smell)" class="{{recipeService.traits[senses.Smell] ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setTrait(senses.Sight)" class="{{recipeService.traits[senses.Sight] ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setTrait(senses.Sound)" class="{{recipeService.traits[senses.Sound] ? 'filtered' : ''}}">Sound</button>
                 <span [matTooltipShowDelay]="200" matTooltip="Note that illusions don't count for orders."> Illusion:
-                <button (click)="setIllusion(recipeService.senses.Taste)" class="{{recipeService.illusion == recipeService.senses.Taste ? 'filtered' : ''}}">Taste</button>                
-                <button (click)="setIllusion(recipeService.senses.Touch)" class="{{recipeService.illusion == recipeService.senses.Touch ? 'filtered' : ''}}">Touch</button>
-                <button (click)="setIllusion(recipeService.senses.Smell)" class="{{recipeService.illusion == recipeService.senses.Smell ? 'filtered' : ''}}">Smell</button>
-                <button (click)="setIllusion(recipeService.senses.Sight)" class="{{recipeService.illusion == recipeService.senses.Sight ? 'filtered' : ''}}">Sight</button>
-                <button (click)="setIllusion(recipeService.senses.Sound)" class="{{recipeService.illusion == recipeService.senses.Sound ? 'filtered' : ''}}">Sound</button>
+                <button (click)="setIllusion(senses.Taste)" class="{{recipeService.illusion == senses.Taste ? 'filtered' : ''}}">Taste</button>                
+                <button (click)="setIllusion(senses.Touch)" class="{{recipeService.illusion == senses.Touch ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setIllusion(senses.Smell)" class="{{recipeService.illusion == senses.Smell ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setIllusion(senses.Sight)" class="{{recipeService.illusion == senses.Sight ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setIllusion(senses.Sound)" class="{{recipeService.illusion == senses.Sound ? 'filtered' : ''}}">Sound</button>
                 </span>
             </div>
             <div>
@@ -113,11 +118,11 @@
     </div>
     <div class="panelContainer">
         <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
-            Results below. Shows top 1000 sorted descending by Value and Rank/Cost.
             <table>
                 <span *ngIf="mainLoopService.started">Simulation running, pause for current results...</span>
                 <ng-container *ngIf="!mainLoopService.started">
-                    <tr *ngIf="recipeService.recipeListDisplay.length > 1" text-align="center">
+                    Results below. Shows top 1000 sorted descending by profit.
+                    <tr *ngIf="recipeService.recipeListDisplay.length >= 1" text-align="center">
                         <td>Name</td>
                         <td>Cost</td>
                         <td>Rank</td>
@@ -129,9 +134,10 @@
                         <td>Smell</td>
                         <td>Sight</td>
                         <td>Sound</td>
+                        <td>Deviation</td>
                     </tr>
                     <ng-container *ngFor="let recipe of recipeService.recipeListDisplay; let i = index;">
-                        <tr *ngIf="i + 1 < recipeService.recipeListDisplay.length">
+                        <tr *ngIf="i < recipeService.recipeListDisplay.length">
                             <td>{{i + 1}}: {{recipe.name}}</td>
                             <td>{{recipe.cost}}</td>
                             <td>{{recipe.rank.rank}}</td>
@@ -143,6 +149,7 @@
                             <td>{{recipe.Smell}}</td>
                             <td>{{recipe.Sight}}</td>
                             <td>{{recipe.Sound}}</td>
+                            <td>{{recipe.deviation*100}}%</td>
                         </tr>
                     </ng-container>
                 </ng-container>

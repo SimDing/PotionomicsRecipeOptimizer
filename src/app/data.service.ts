@@ -1,13 +1,14 @@
 import { Injectable } from '@angular/core';
-import { IngredientsService, IngredientStats, FormulaType, SortCategory, Sort} from './ingredients.service';
+import { IngredientsService, FormulaType, SortCategory, Sort, IngredientCount} from './ingredients.service';
 import { MainLoopService } from './main-loop.service';
 import { RecipeService } from './recipe.service';
 
 
 /** holds the settings and some user entered data for ingredients */
 interface Data {
-  ingredients: IngredientStats[],
+  ingredients: IngredientCount[],
   selectedFormula: FormulaType,
+  selectedQuality: string,
   target: number,
   ingredCount: number,
   sortMode: Sort,
@@ -16,7 +17,6 @@ interface Data {
   illusion: number 
   shopBonus: number
 }
-
 
 
 /** Contains everything from settings to the main combination methods and all related members. */
@@ -32,7 +32,9 @@ export class DataService {
     public recipeService: RecipeService
   ) { }
 
-  /** Saves user settings and inventory counts. */
+  /** Saves user settings and inventory counts. 
+   * @TODO update avail ingredients saving
+  */
   saveData() {
     const data: Data = {
       sortMode: this.ingredientsService.sortMode,
@@ -41,10 +43,13 @@ export class DataService {
       ingredCount: this.recipeService.ingredCount,
       target: this.recipeService.target,
       selectedFormula: this.recipeService.selectedFormula,
+      selectedQuality: this.recipeService.selectedQuality,
       shopBonus: this.recipeService.shopBonus,
       traits: this.recipeService.traits,
       illusion: this.recipeService.illusion
     }
+    console.log(data.selectedQuality)
+    console.log(this.recipeService.selectedQuality)
     window.localStorage.setItem("AvailableIngredients", JSON.stringify(data))
   }
 
@@ -52,16 +57,23 @@ export class DataService {
   loadData() {
     const str = window.localStorage.getItem("AvailableIngredients");
     if (!this.ingredientsService.ingredients.length || this.ingredientsService.ingredients.length < 2) {
-      this.ingredientsService.parseCSV()
+      this.ingredientsService.parseTSV()
     }
     if (str) {
       const data = JSON.parse(str) as Data;
-      this.recipeService.selectedFormula = data.selectedFormula || 0;
-      this.recipeService.target = data.target || 375;
-      this.recipeService.ingredCount = data.ingredCount || 8;
-      this.ingredientsService.ingredients = data.ingredients || [];
+
+      this.ingredientsService.ingredients.forEach(ingredient => {
+        const index = data.ingredients.find(x => x.name === ingredient.name);
+        ingredient.Avail = index ? index.Avail : 0;
+      });
       this.ingredientsService.sortMode = data.sortMode || { category: SortCategory.Name, descending: false };
       this.ingredientsService.filter = data.filter || false;
+      this.ingredientsService.ingredientSort();
+
+      this.recipeService.selectedFormula = data.selectedFormula || 0;
+      this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
+      this.recipeService.target = data.target || 375;
+      this.recipeService.ingredCount = data.ingredCount || 8;
       this.recipeService.traits = data.traits || [false, false, false, false, false];
       this.recipeService.illusion = data.illusion || 0;
       this.recipeService.shopBonus = data.shopBonus || 0;

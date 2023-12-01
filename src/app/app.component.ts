@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { IngredientsService, Rarity } from './ingredients.service';
-import { RecipeService } from './recipe.service';
+import { RecipeService, Senses } from './recipe.service';
 import { MainLoopService } from './main-loop.service';
 import { DataService } from './data.service';
 
@@ -13,14 +13,15 @@ import { DataService } from './data.service';
 export class AppComponent implements OnInit {
 
   title = 'PotionomicsBruteforcer';
-  percents: number[] = [0.5, 0.5, 0, 0];
-
+  senses = Senses;
+  qualitySelection: string[] = []
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
     public recipeService: RecipeService,
     public dataService: DataService
   ) {
+    this.qualitySelection = Object.keys(this.recipeService.qualities)
     this.recipeService.buildIngredients();
   }
 
@@ -143,13 +144,21 @@ export class AppComponent implements OnInit {
   /** Resets the combination sim. */
   resetClick() {
     this.recipeService.indexerInit();
-    this.recipeService.recipeInit();
+    this.recipeService.searchInit();
   }
 
+  
   /** Updates the formula in use. */
   formulaUpdate(event: Event) {
     if (!(event.target instanceof HTMLSelectElement)) return;
     this.recipeService.selectedFormula = parseInt(event.target.value);
+    this.recipeService.updateFormula();
+  }
+
+  /** Updates the minimum allowed quality. */
+  qualityUpdate(event: Event) {
+    if (!(event.target instanceof HTMLSelectElement)) return;
+    this.recipeService.selectedQuality = event.target.value;
     this.recipeService.updateFormula();
   }
 
