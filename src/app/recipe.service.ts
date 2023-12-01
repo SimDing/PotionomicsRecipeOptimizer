@@ -51,7 +51,6 @@ export class RecipeService {
   hitCount = 0; // For display
   traits = [false, false, false, false, false] // For display and selection
   illusion = 0;
-  // @TODO make this threshold dynamic based on user input.
   topDeviate = 0.0025 // Perfect: 0.0025 Very: 0.05 Stable: 0.15 Unstable 0.25
   bottomDeviate = 0
   selectedFormula = 0
@@ -67,10 +66,11 @@ export class RecipeService {
   ) {
     this.topDeviate = 0.05; // @TODO remove debug
     mainLoopService.tickSubject.subscribe(() => {
-      // @TODO Remove need for empty additions to recipe list. Initializers should be part of the recipe building.
       this.IngredAvail = {}
       for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) { // this.IngredAvail[this.ingredientList[this.indexer[this.slotIndex]].index]
-        this.IngredAvail[this.ingredientsService.ingredients[i].name] = this.ingredientsService.ingredients[i].Avail;
+        if (this.ingredientsService.ingredients[i].Avail > 0) {
+          this.IngredAvail[this.ingredientsService.ingredients[i].name] = this.ingredientsService.ingredients[i].Avail;
+        }
       }
       this.discoverNewRecipe(this.initRecipe());
     });
@@ -101,6 +101,7 @@ export class RecipeService {
     this.recipeList = [];
     this.totalCount = 0;
     this.hitCount = 0;
+    this.slotIndex = 0;
   }
 
   /** Sorts the results of the sim prior to display, currently according to profit */
@@ -122,7 +123,7 @@ export class RecipeService {
   recipeRank(recipe: Recipe) {
     const formula = this.ingredientsService.formulas[this.selectedFormula];
     const ranks = this.rankRepo.ranks;
-    for (let i = 0; i < this.rankRepo.ranks.length - 1; i++) {
+    for (let i = 0; i <= this.rankRepo.ranks.length - 1; i++) {
       if (ranks[i].min <= recipe.Total && recipe.Total < ranks[i].max) {
         const bonus = this.shopBonus + recipe.Smell + recipe.Sight + recipe.Sound + recipe.Taste + recipe.Touch;
         let extra;
@@ -140,6 +141,7 @@ export class RecipeService {
         }
         recipe.rank = ranks[Math.min(i + extra, ranks.length - 1)];
         recipe.value = Math.round(recipe.rank.mult * formula.value * (bonus / 100 + 1));
+        break;
       }
     }
   }
@@ -204,6 +206,7 @@ export class RecipeService {
         Math.max((this.ingredientList[i].E / this.maxMagamin) - this.percE, 0);
 
       if (deviation > this.topDeviate || // Remove ingredients that don't match filters and deviate too far.
+        this.ingredientList[i].Avail == 0 || // and are empty
         (this.ingredientList[i].Taste < 0 && this.traits[Senses.Taste]) ||
         (this.ingredientList[i].Touch < 0 && this.traits[Senses.Touch]) ||
         (this.ingredientList[i].Smell < 0 && this.traits[Senses.Smell]) ||
@@ -300,13 +303,14 @@ export class RecipeService {
    * @TODO create params for one time or short use recursion variables and move all recipe changes here for better logic control.
    * @TODO ignore trait if illusion selected
    * @TODO allow for division heuristics
-   * @TODO allow for required ingredient
+   * @TODO allow for required ingredient (something like an Avail reduction and starter recipe and higher slotIndex before calling discover. Watch out for the indexer sweeper tho)
   */
   findIngredient(recipe: Recipe, pos: number): { deviation: number | undefined; pos: number; } {
     let deviation; // Going to need to check for recipe deviation.
 
     while (pos >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
-      if (this.IngredAvail[this.ingredientList[pos].name] === 0) { // Ignore ingredients that have no availability count left
+      this.ingredientList[pos].name
+      if (!(this.IngredAvail[this.ingredientList[pos].name] > 0)) { // Ignore ingredients that have no availability count left
         pos--;
         continue;
       }

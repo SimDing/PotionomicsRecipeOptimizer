@@ -86,12 +86,12 @@ export class RankRepo {
     {
         rank: 'Greater 1*',
         min: 170,
-        max: 190,
+        max: 195,
         mult: 1
     },
     {
         rank: 'Greater 2*',
-        min: 190,
+        min: 195,
         max: 215,
         mult: 1
     },

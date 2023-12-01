@@ -10,7 +10,7 @@
             <div *ngIf="!mainLoopService.started"> paused</div>
             <div [matTooltipShowDelay]="1000" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             &nbsp;
-            <div> Cauldron ingredient target: <input type="number" min="2" max="20" value="{{recipeService.ingredCount}}" (change)="ingredCountChange($event)"></div>
+            <div> Cauldron ingredient target: <input type="number" min="2" max="14" value="{{recipeService.ingredCount}}" (change)="ingredCountChange($event)"></div>
             <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{recipeService.maxMagamin}}" (change)="magaminChange($event)"></div>
             Formula: <select (change)="formulaUpdate($event)">
                 <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
@@ -63,7 +63,7 @@
                 <button (click)="selectWeekChange(4)">Week 4+</button>     
                 <button (click)="selectWeekChange(5)">Week 5</button>
             </div>
-            Change all: <input type="number" min="0" max="20" (change)="allAvailChange($event)">
+            Change all: <input type="number" min="0" max="999" (change)="allAvailChange($event)">
             <button (click)="setToQuinns()">Set to Quinn's</button>
             <button (click)="dataService.saveData()">Save Settings</button>
             <button (click)="dataService.loadData()">Load Settings</button>
@@ -112,7 +112,7 @@
                         <td><input type="number" min="0" max="999"
                                 value="{{ingredient.Avail}}" (change)="ingredAvailChange($event, i)">
                         </td>
-                        <td><input type="number" min="0" max="20"
+                        <td><input type="number" min="0" max="14"
                                 value="{{ingredient.Avail}}" (change)="mustHaveChange($event, i)">
                         </td>
                         <!-- @TODO add must haves and related warning-->
@@ -135,6 +135,7 @@
                         <td>Value</td>
                         <td>Ratio</td>
                         <td>Profit</td>
+                        <td>Total</td>
                         <td>Taste</td>
                         <td>Touch</td>
                         <td>Smell</td>
@@ -150,6 +151,7 @@
                             <td>{{recipe.value}}*{{recipeService.potionCount()}}</td>
                             <td>{{recipeRatio(i)}}</td>
                             <td>{{recipe.value * recipeService.potionCount() - recipe.cost}}</td>
+                            <td>{{recipe.Total}}</td>
                             <td>{{recipe.Taste}}</td>
                             <td>{{recipe.Touch}}</td>
                             <td>{{recipe.Smell}}</td>
