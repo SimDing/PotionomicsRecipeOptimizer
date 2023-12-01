@@ -47,7 +47,7 @@ export class AppComponent implements OnInit {
   /** Changes all available to a specific number, generally for zeroing. */
   allAvailChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 20), 0);
     for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
       this.ingredientsService.ingredients[i].Avail = numCheck;
     }
@@ -57,7 +57,15 @@ export class AppComponent implements OnInit {
   /** Updates a specific ingredient's available number. */
   ingredAvailChange(event: Event, index: number) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 0);
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
+    this.ingredientsService.ingredients[index].Avail = numCheck;
+    this.recipeService.updateFormula();
+  }
+
+  /** Updates a specific ingredient's available number. */
+  mustHaveChange(event: Event, index: number) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 20), 0);
     this.ingredientsService.ingredients[index].Avail = numCheck;
     this.recipeService.updateFormula();
   }
@@ -88,24 +96,23 @@ export class AppComponent implements OnInit {
   /** Checks for user changes to ingredient count. */
   ingredCountChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 20), 2);
-    this.recipeService.ingredCount = numCheck;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 2 : event.target.valueAsNumber, 20), 2);
     this.recipeService.ingredCount = numCheck;
     this.resetClick();
   }
 
   /** Checks for user changes to magamin target. */
-  targetChange(event: Event) {
+  magaminChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 2000), 0);
-    this.recipeService.target = numCheck;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 2000), 0);
+    this.recipeService.maxMagamin = numCheck;
     this.resetClick();
   }
 
   /** Checks for user changes to shop bonuses. */
   bonusChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(event.target.valueAsNumber, 10000), 0);
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 10000), 0);
     this.recipeService.shopBonus = numCheck;
     this.recipeService.updateFormula();
   }

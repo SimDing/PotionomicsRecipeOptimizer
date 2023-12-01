@@ -41,7 +41,7 @@ export class DataService {
       filter: this.ingredientsService.filter,
       ingredients: this.ingredientsService.ingredients,
       ingredCount: this.recipeService.ingredCount,
-      target: this.recipeService.target,
+      target: this.recipeService.maxMagamin,
       selectedFormula: this.recipeService.selectedFormula,
       selectedQuality: this.recipeService.selectedQuality,
       shopBonus: this.recipeService.shopBonus,
@@ -72,7 +72,7 @@ export class DataService {
 
       this.recipeService.selectedFormula = data.selectedFormula || 0;
       this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
-      this.recipeService.target = data.target || 375;
+      this.recipeService.maxMagamin = data.target || 375;
       this.recipeService.ingredCount = data.ingredCount || 8;
       this.recipeService.traits = data.traits || [false, false, false, false, false];
       this.recipeService.illusion = data.illusion || 0;
@@ -80,7 +80,7 @@ export class DataService {
       this.recipeService.updateFormula();
     } else {
       this.recipeService.selectedFormula = 0;
-      this.recipeService.target = 375;
+      this.recipeService.maxMagamin = 375;
       this.recipeService.ingredCount = 8;
       this.recipeService.traits = [false, false, false, false, false]
       this.recipeService.shopBonus = 0;

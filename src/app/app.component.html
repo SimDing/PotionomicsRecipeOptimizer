@@ -5,13 +5,13 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added quality selection. Bugfixes for multiple traits, price increase for Rank, wild empty recipe.">
+                matTooltip="Added quality selection. Bugfixes for multiple traits, price increase for Rank, wild empty recipe, and ignored ingredients.">
                 v.0.2.0 Hover for more</span>
             <div *ngIf="!mainLoopService.started"> paused</div>
             <div [matTooltipShowDelay]="1000" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             &nbsp;
             <div> Cauldron ingredient target: <input type="number" min="2" max="20" value="{{recipeService.ingredCount}}" (change)="ingredCountChange($event)"></div>
-            <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{recipeService.target}}" (change)="targetChange($event)"></div>
+            <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{recipeService.maxMagamin}}" (change)="magaminChange($event)"></div>
             Formula: <select (change)="formulaUpdate($event)">
                 <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
                 [selected]="formula.type === recipeService.selectedFormula">{{formula.name}}</option>
@@ -28,7 +28,7 @@
             <div> Total tries: {{recipeService.totalCount}}</div>
             <div> Recipes found: {{recipeService.hitCount}}</div>
             <table *ngFor="let j of recipeService.indexer; let i = index">
-                Ingredient {{i + 1}} remaining checks: {{j.index + 1}}
+                Ingredient {{i + 1}} remaining checks: {{j}}
             </table>
         </div>
         <div class="rightPanel" *ngIf="!mainLoopService.started">
@@ -89,6 +89,7 @@
                     <td (click)="ingredientsService.ingredientSort(15)">Location<mat-icon *ngIf="sortCheck(15,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(15,true)">keyboard_arrow_down</mat-icon></td>
                     <td (click)="ingredientsService.ingredientSort(16)">Type<mat-icon *ngIf="sortCheck(16,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(16,true)">keyboard_arrow_down</mat-icon></td>
                     <td>Inventory</td>
+                    <td>Must-haves</td>
                 </tr>
                 <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
                     <tr [ngClass]="ingredCheck(ingredient.index)" >
@@ -108,9 +109,14 @@
                         <td>{{ingredient.Rarity}}</td>
                         <td>{{ingredient.Location}}</td>
                         <td>{{ingredient.Type}}</td>
-                        <td><input type="number" min="0" max="20"
+                        <td><input type="number" min="0" max="999"
                                 value="{{ingredient.Avail}}" (change)="ingredAvailChange($event, i)">
                         </td>
+                        <td><input type="number" min="0" max="20"
+                                value="{{ingredient.Avail}}" (change)="mustHaveChange($event, i)">
+                        </td>
+                        <!-- @TODO add must haves and related warning-->
+                        <td *ngIf="ingredient.Avail <= ingredient.Avail"> <span style="color: red;"> I'm red! </span></td>
                     </tr>
                 </ng-container>
             </table>
@@ -119,7 +125,7 @@
     <div class="panelContainer">
         <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
             <table>
-                <span *ngIf="mainLoopService.started">Simulation running, pause for current results...</span>
+                <span *ngIf="mainLoopService.started">Simulation running, pause and wait for current results to sort...</span>
                 <ng-container *ngIf="!mainLoopService.started">
                     Results below. Shows top 1000 sorted descending by profit.
                     <tr *ngIf="recipeService.recipeListDisplay.length >= 1" text-align="center">
