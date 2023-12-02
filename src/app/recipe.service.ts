@@ -41,8 +41,7 @@ export class RecipeService {
   private percC = 0 / 100;
   private percD = 0 / 100;
   private percE = 0 / 100;
-  private topDeviate = 0.0025; // Perfect: 0.0025 Very: 0.05 Stable: 0.15 Unstable 0.25
-  private bottomDeviate = 0; // @TODO remove debug/research
+  private topDeviate = 0 + 0.0025; // Perfect: 0 Very: 0.05 Stable: 0.15 Unstable 0.25 | allowance 0.25%
   private IngredAvail: NumDict = {}; // Holds the available ingredients for the working recipe.
   private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
   private rankRepo = new RankRepo;
@@ -50,7 +49,7 @@ export class RecipeService {
 
   selectedQuality = "Perfect";
   qualities: NumDict = {
-    "Perfect": 0.0025,
+    "Perfect": 0,
     "Very Stable": 0.05,
     "Stable": 0.15,
     "Unstable": 0.25,
@@ -124,7 +123,7 @@ export class RecipeService {
     this.percC = this.ingredientsService.formulas[this.selectedFormula].C;
     this.percD = this.ingredientsService.formulas[this.selectedFormula].D;
     this.percE = this.ingredientsService.formulas[this.selectedFormula].E;
-    this.topDeviate = this.qualities[this.selectedQuality];
+    this.topDeviate = this.qualities[this.selectedQuality] + 0.0025;
     this.buildIngredients();
     this.searchInit();
   }
@@ -394,9 +393,7 @@ export class RecipeService {
 
       // Skip deviant ingredients and ingredients that go over magamin count. The lowest total magamin is 4 
       // so this will also remove earlier ingredients that go over by assuming all the later ingredients total 4.
-      // @TODO make this minimum more dynamic based on the available inventory.
       if (deviation > this.topDeviate ||
-        deviation < this.bottomDeviate || // @TODO remove debug/research
         ((this.ingredCount - 1 - this.slotIndex) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)
       ) {
         pos--;
