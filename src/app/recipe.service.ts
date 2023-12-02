@@ -4,7 +4,7 @@ import { MainLoopService } from './main-loop.service';
 import { RankRepo, PotionRank } from './potion-rank.repo';
 
 
-interface numDict {
+interface NumDict {
   [key: string]: number
 }
 
@@ -12,6 +12,14 @@ interface Recipe extends IngredientStats {
   rank: PotionRank;
   value: number;
   deviation: number;
+}
+
+export enum RecipeSort {
+  Cost,
+  Rank,
+  Value,
+  Ratio,
+  Profit
 }
 
 export enum Senses {
@@ -28,67 +36,69 @@ export enum Senses {
   providedIn: 'root'
 })
 export class RecipeService {
-  rankRepo = new RankRepo;
-  recipeList: Recipe[] = [];
-  recipeListDisplay = [...this.recipeList];
-
-  qualities: numDict = {
-    "Perfect": 0.0025,
-    "Very Stable": 0.05,
-    "Stable": 0.15,
-    "Unstable": 0.25,
-  };
-
-  private IngredAvail: numDict = {};
   private percA = 50 / 100;
   private percB = 50 / 100;
   private percC = 0 / 100;
   private percD = 0 / 100;
   private percE = 0 / 100;
+  private topDeviate = 0.0025; // Perfect: 0.0025 Very: 0.05 Stable: 0.15 Unstable 0.25
+  private bottomDeviate = 0; // @TODO remove debug/research
+  private IngredAvail: NumDict = {}; // Holds the available ingredients for the working recipe.
+  private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
+  private rankRepo = new RankRepo;
+  private recipeList: Recipe[] = [];
+
+  selectedQuality = "Perfect";
+  qualities: NumDict = {
+    "Perfect": 0.0025,
+    "Very Stable": 0.05,
+    "Stable": 0.15,
+    "Unstable": 0.25,
+  };
+  selectedSort = "Profit";
+  recipeSorts: NumDict = {
+    "Cost": RecipeSort.Cost,
+    "Rank": RecipeSort.Rank,
+    "Value": RecipeSort.Value,
+    "Ratio": RecipeSort.Ratio,
+    "Profit": RecipeSort.Profit,
+  };
+  recipeListDisplay: Recipe[] = []; // Used to display 1000 results on frontend.
   ingredientList: IngredientStats[] = []; // Used for display style changes
   indexer: number[] = []; // Used in display
   totalCount = 0; // For display
   hitCount = 0; // For display
-  traits = [false, false, false, false, false] // For display and selection
-  illusion = 0;
-  topDeviate = 0.0025 // Perfect: 0.0025 Very: 0.05 Stable: 0.15 Unstable 0.25
-  bottomDeviate = 0
-  selectedFormula = 0
-  selectedQuality = "Perfect"
+  traits = [false, false, false, false, false]; // For display and selection
+  illusion = 0; // For display and selection
+  selectedFormula = 0;
   maxMagamin = 375;
   ingredCount = 8;
   shopBonus = 0;
-  private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
 
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
   ) {
-    this.topDeviate = 0.05; // @TODO remove debug
     mainLoopService.tickSubject.subscribe(() => {
-      this.IngredAvail = {}
-      for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) { // this.IngredAvail[this.ingredientList[this.indexer[this.slotIndex]].index]
-        if (this.ingredientsService.ingredients[i].Avail > 0) {
-          this.IngredAvail[this.ingredientsService.ingredients[i].name] = this.ingredientsService.ingredients[i].Avail;
-        }
-      }
-      this.discoverNewRecipe(this.initRecipe());
+      this.discoverInit();
     });
   }
 
-  /** Updates the formula ratios. */
-  updateFormula() {
-    this.percA = this.ingredientsService.formulas[this.selectedFormula].A;
-    this.percB = this.ingredientsService.formulas[this.selectedFormula].B;
-    this.percC = this.ingredientsService.formulas[this.selectedFormula].C;
-    this.percD = this.ingredientsService.formulas[this.selectedFormula].D;
-    this.percE = this.ingredientsService.formulas[this.selectedFormula].E;
-    this.topDeviate = this.qualities[this.selectedQuality];
-    this.buildIngredients();
-    this.searchInit();
+
+  // INIT
+
+  /** Initializes the recipe search. */
+  discoverInit() {
+    this.IngredAvail = {}
+    for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) { // this.IngredAvail[this.ingredientList[this.indexer[this.slotIndex]].index]
+      if (this.ingredientsService.ingredients[i].Avail > 0) {
+        this.IngredAvail[this.ingredientsService.ingredients[i].name] = this.ingredientsService.ingredients[i].Avail;
+      }
+    }
+    this.discoverNewRecipe(this.initRecipe());
   }
 
-  /** Initializes the working index of the search algorithms */
+  /** Initializes the working index of the search algorithms. */
   indexerInit() {
     this.indexer = [];
     for (let i = 0; i < this.ingredCount; i++) {
@@ -104,9 +114,40 @@ export class RecipeService {
     this.slotIndex = 0;
   }
 
-  /** Sorts the results of the sim prior to display, currently according to profit */
-  recipeSort(list = this.recipeList) {
-    list.sort((a, b) => (b.value * this.potionCount() - b.cost) - (a.value * this.potionCount() - a.cost));
+
+  // UTILITY
+
+  /** Updates the formula ratios. */
+  updateFormula() {
+    this.percA = this.ingredientsService.formulas[this.selectedFormula].A;
+    this.percB = this.ingredientsService.formulas[this.selectedFormula].B;
+    this.percC = this.ingredientsService.formulas[this.selectedFormula].C;
+    this.percD = this.ingredientsService.formulas[this.selectedFormula].D;
+    this.percE = this.ingredientsService.formulas[this.selectedFormula].E;
+    this.topDeviate = this.qualities[this.selectedQuality];
+    this.buildIngredients();
+    this.searchInit();
+  }
+
+  /** Sorts the results of the sim prior to display according to selection saved in selectedSort member */
+  recipeSort() {
+    switch (this.selectedSort) {
+      case "Cost":
+        this.recipeList.sort((a, b) => b.cost - a.cost);
+        break;
+      case "Rank":
+        this.recipeList.sort((a, b) => b.rank.rank < a.rank.rank ? -1: a.rank.rank == b.rank.rank ? 0 : 1);
+        break;
+      case "Value":
+        this.recipeList.sort((a, b) => b.value - a.value);
+        break;
+      case "Ratio":
+        this.recipeList.sort((a, b) => (b.value * this.potionCount() - b.cost) / b.cost - (a.value * this.potionCount() - a.cost) / a.cost);
+        break;
+      case "Profit":
+        this.recipeList.sort((a, b) => (b.value * this.potionCount() - b.cost) - (a.value * this.potionCount() - a.cost));
+        break;
+    }
   }
 
   /** Displays the recipes from index start to start + length.
@@ -151,8 +192,8 @@ export class RecipeService {
     return Math.floor(this.ingredCount / 2);
   }
 
-  //@TODO Here's where my commenting gets dicey, gotta get it all down. This is the meat of the logic.
 
+  // MAIN FLOW
 
   /** Macro method to create a new blank recipe */
   initRecipe(): Recipe {
@@ -238,7 +279,6 @@ export class RecipeService {
     if (recipe === undefined) {
       if (this.slotIndex <= 0) { // If the first slot returns nothing then we're done.
         this.mainLoopService.started = false;
-        this.ingredientsService.ingredientSort();
         this.recipeSort();
         this.recipeDisplay();
         return;
@@ -254,7 +294,7 @@ export class RecipeService {
 
     // Check if we've reached the final slot
     if (this.slotIndex < this.ingredCount - 1) {
-      // @TODO improve recursion based on new knowledge and growth  
+      // @TODO improve recursion with local indices and remove global member.
       // Recursively move to the next slot. Good for dynamic depth.
       this.slotIndex++;
       this.discoverNewRecipe(recipe);
@@ -271,7 +311,7 @@ export class RecipeService {
     const pos = this.indexer[this.slotIndex]
     const result = this.findIngredient(recipe, pos);
     this.indexer[this.slotIndex] = result.pos;
-    if (result.deviation === undefined) {
+    if (result.deviation === undefined || result.pos < 0) {
       return;
     }
 
@@ -287,11 +327,11 @@ export class RecipeService {
     recipe.E += ingredient.E;
     recipe.Total += ingredient.Total;
     recipe.cost += ingredient.cost;
-    recipe.Taste = ingredient.Taste < 0 || recipe.Taste < 0 ? -5 : ingredient.Taste > 0 ? 5 : 0;
-    recipe.Touch = ingredient.Touch < 0 || recipe.Touch < 0 ? -5 : ingredient.Touch > 0 ? 5 : 0;
-    recipe.Smell = ingredient.Smell < 0 || recipe.Smell < 0 ? -5 : ingredient.Smell > 0 ? 5 : 0;
-    recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5 : ingredient.Sight > 0 ? 5 : 0;
-    recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5 : ingredient.Sound > 0 ? 5 : 0;
+    recipe.Taste = ingredient.Taste < 0 || recipe.Taste < 0 ? -5 : ingredient.Taste > 0 ? 5 : recipe.Taste;
+    recipe.Touch = ingredient.Touch < 0 || recipe.Touch < 0 ? -5 : ingredient.Touch > 0 ? 5 : recipe.Touch;
+    recipe.Smell = ingredient.Smell < 0 || recipe.Smell < 0 ? -5 : ingredient.Smell > 0 ? 5 : recipe.Smell;
+    recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5 : ingredient.Sight > 0 ? 5 : recipe.Sight;
+    recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5 : ingredient.Sound > 0 ? 5 : recipe.Sound;
     recipe.deviation = result.deviation;
     this.IngredAvail[ingredient.name]--;
 
@@ -299,9 +339,10 @@ export class RecipeService {
   }
 
   /** Joins ingredients to form a recipe.
-   * @returns Index of the ingredient, or -1 if none fit.
+   * @returns object with deviation and pos (index) of the ingredient, or undefined and -1 if none fit.
+   * @param recipe the empty or partially built recipe needing a new ingredient.
+   * @param pos the current position of the slot currently being worked, moves in reverse.
    * @TODO create params for one time or short use recursion variables and move all recipe changes here for better logic control.
-   * @TODO ignore trait if illusion selected
    * @TODO allow for division heuristics
    * @TODO allow for required ingredient (something like an Avail reduction and starter recipe and higher slotIndex before calling discover. Watch out for the indexer sweeper tho)
   */
@@ -331,6 +372,17 @@ export class RecipeService {
           Math.max(((recipe.D + D) / this.maxMagamin) - this.percD, 0) +
           Math.max(((recipe.E + E) / this.maxMagamin) - this.percE, 0);
       } else {
+        if (
+          (this.traits[Senses.Taste] && recipe.Taste < 5 && ingredient.Taste < 5) ||
+          (this.traits[Senses.Touch] && recipe.Touch < 5 && ingredient.Touch < 5) ||
+          (this.traits[Senses.Smell] && recipe.Smell < 5 && ingredient.Smell < 5) ||
+          (this.traits[Senses.Sight] && recipe.Sight < 5 && ingredient.Sight < 5) ||
+          (this.traits[Senses.Sound] && recipe.Sound < 5 && ingredient.Sound < 5)
+        ) {
+          this.totalCount++;
+          pos--;
+          continue;
+        }
         deviation =
           Math.max(((recipe.A + A) / (recipe.Total + Total)) - this.percA, 0) +
           Math.max(((recipe.B + B) / (recipe.Total + Total)) - this.percB, 0) +
@@ -343,7 +395,10 @@ export class RecipeService {
       // Skip deviant ingredients and ingredients that go over magamin count. The lowest total magamin is 4 
       // so this will also remove earlier ingredients that go over by assuming all the later ingredients total 4.
       // @TODO make this minimum more dynamic based on the available inventory.
-      if (deviation > this.topDeviate || deviation < this.bottomDeviate || ((this.ingredCount - 1 - this.slotIndex) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)) {
+      if (deviation > this.topDeviate ||
+        deviation < this.bottomDeviate || // @TODO remove debug/research
+        ((this.ingredCount - 1 - this.slotIndex) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)
+      ) {
         pos--;
       } else {
         break;
@@ -353,9 +408,13 @@ export class RecipeService {
     return { deviation, pos };
   }
 
-  /** Finalizes the recipe */
+  /** Finalizes a valid recipe by applying illusion, ranking, and pushing to the recipe list.
+   * @param recipe the complete recipe of the slot currently being worked.
+  */
   finalizeRecipe(recipe: Recipe) {
     switch (this.illusion) {
+      case Senses.None:
+        break;
       case Senses.Taste:
         recipe.Taste = 5;
         break;
@@ -373,25 +432,12 @@ export class RecipeService {
         break;
     }
 
-    // @TODO merge this check into the ingredient search.
-    // @TODO investigate single trait bug.
-    // The recipe is added to the end of the list, so if it doesn't meet the criteria filter, pop it back out.
-    if (recipe.Total > this.maxMagamin ||
-      (recipe.Taste < 5 && this.traits[Senses.Taste]) ||
-      (recipe.Touch < 5 && this.traits[Senses.Touch]) ||
-      (recipe.Smell < 5 && this.traits[Senses.Smell]) ||
-      (recipe.Sight < 5 && this.traits[Senses.Sight]) ||
-      (recipe.Sound < 5 && this.traits[Senses.Sound])
-    ) {
-      this.totalCount++;
-      return;
-    } else {
-      // increase the good recipe counter when finding one, and Rank/price the recipe.
-      this.totalCount++;
-      this.hitCount++;
-      this.recipeRank(recipe);
-      this.recipeList.push(recipe)
-    }
+    // increase the good recipe counter when finding one, and Rank/price the recipe.
+    this.totalCount++;
+    this.hitCount++;
+    this.recipeRank(recipe);
+    this.recipeList.push(recipe)
+
   }
 
 }

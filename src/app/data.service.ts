@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
-import { IngredientsService, FormulaType, SortCategory, Sort, IngredientCount} from './ingredients.service';
-import { MainLoopService } from './main-loop.service';
+import { IngredientsService, FormulaType, SortCategory, SortMode, IngredientCount} from './ingredients.service';
 import { RecipeService } from './recipe.service';
 
 
@@ -9,13 +8,16 @@ interface Data {
   ingredients: IngredientCount[],
   selectedFormula: FormulaType,
   selectedQuality: string,
+  selectedSort: string,
   target: number,
   ingredCount: number,
-  sortMode: Sort,
+  sortMode: SortMode,
+  sortMode2: SortMode,
   filter: boolean,
   traits: boolean[],
-  illusion: number 
-  shopBonus: number
+  illusion: number,
+  shopBonus: number,
+
 }
 
 
@@ -27,23 +29,27 @@ export class DataService {
 
 
   constructor(
-    public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
     public recipeService: RecipeService
   ) { }
 
-  /** Saves user settings and inventory counts. 
-   * @TODO update avail ingredients saving
-  */
+  /** Saves user settings and inventory counts. */
   saveData() {
+    const ingredients: IngredientCount[] = this.ingredientsService.ingredients.map(x => ({
+      name: x.name,
+      Avail: x.Avail,
+    })); // Backwards compatibility, used to save as IngredientStats.
+    console.log(ingredients);
     const data: Data = {
       sortMode: this.ingredientsService.sortMode,
+      sortMode2: this.ingredientsService.sortMode2,
       filter: this.ingredientsService.filter,
-      ingredients: this.ingredientsService.ingredients,
+      ingredients: ingredients,
       ingredCount: this.recipeService.ingredCount,
       target: this.recipeService.maxMagamin,
       selectedFormula: this.recipeService.selectedFormula,
       selectedQuality: this.recipeService.selectedQuality,
+      selectedSort: this.recipeService.selectedSort,
       shopBonus: this.recipeService.shopBonus,
       traits: this.recipeService.traits,
       illusion: this.recipeService.illusion
@@ -65,13 +71,16 @@ export class DataService {
       this.ingredientsService.ingredients.forEach(ingredient => {
         const index = data.ingredients.find(x => x.name === ingredient.name);
         ingredient.Avail = index ? index.Avail : 0;
-      });
-      this.ingredientsService.sortMode = data.sortMode || { category: SortCategory.Name, descending: false };
+      }); 
+      this.ingredientsService.sortMode2 = data.sortMode2 || { category: SortCategory.None, descending: false };
+      this.ingredientsService.sortMode = data.sortMode || { category: SortCategory.None, descending: false };
       this.ingredientsService.filter = data.filter || false;
-      this.ingredientsService.ingredientSort();
+      this.ingredientsService.ingredientSort(this.ingredientsService.sortMode2); // Secondary sorts first.
+      this.ingredientsService.ingredientSort(this.ingredientsService.sortMode);
 
       this.recipeService.selectedFormula = data.selectedFormula || 0;
       this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
+      this.recipeService.selectedSort = data.selectedSort || "Profit";
       this.recipeService.maxMagamin = data.target || 375;
       this.recipeService.ingredCount = data.ingredCount || 8;
       this.recipeService.traits = data.traits || [false, false, false, false, false];

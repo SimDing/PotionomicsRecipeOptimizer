@@ -4,7 +4,7 @@ import { Repo } from './Ingredients.repo';
 
 export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
 
-/** @TODO Implement 
+/** @TODO Implement... whatever this was for
 type Location = '0-Enchanted Forest' | '1-Bone Wastes' | '1-Mushroom Mire' | '2-Ocean Coasts' | '2-Shadow Steppe' | '2-Storm Plains' | '3-Crystalline Forest' |
   '3-Ice Craggs' | '3-Sulfuric Falls' | '4-Arctic' | '4-Crater' | '4-Dragon Oasis' | '5-Magical Wasteland';
   */
@@ -72,7 +72,7 @@ export interface IngredientStats extends IngredientCount {
 
 
 export enum SortCategory {
-  Index,
+  None,
   Name,
   A,
   B,
@@ -93,7 +93,7 @@ export enum SortCategory {
 }
 
 
-export interface Sort {
+export interface SortMode {
   category: SortCategory;
   descending: boolean;
 }
@@ -312,7 +312,8 @@ export class IngredientsService {
   ]
 
   repo = new Repo;
-  sortMode: Sort = { category: SortCategory.Name, descending: false };
+  sortMode: SortMode = { category: SortCategory.None, descending: false };
+  sortMode2: SortMode = { category: SortCategory.None, descending: false }; // Secondary sort, since that kinda matters.
   filter = false;
 
   constructor(
@@ -321,21 +322,22 @@ export class IngredientsService {
     this.enumerateWeekRarity();
   }
 
-
-  /** Sorts ingredients. 
-   * @param category Takes a SortCategory, default null
-  */
-  ingredientSort(category: SortCategory | null = null) {
-    if (category) {
-      if (this.sortMode.category == category) {
-        this.sortMode.descending = !this.sortMode.descending;
-      } else {
-        this.sortMode = { category: category, descending: false } as Sort;
-      }
+  changeSortMode(category: SortCategory){
+    if (this.sortMode.category == category) {
+      this.sortMode.descending = !this.sortMode.descending;
+    } else {
+      this.sortMode2 = this.sortMode;
+      this.sortMode = { category: category, descending: false } as SortMode;
     }
+  }
 
-    if (!this.sortMode.descending) {
-      switch (this.sortMode.category) {
+  
+  /** Sorts ingredients using optiona SortMode object.
+   * @param sortMode An object that decides how the ingredients are sorted. Defaults to the sortMode member.
+  */
+  ingredientSort(sortMode: SortMode = this.sortMode) {
+    if (!sortMode.descending) {
+      switch (sortMode.category) {
         case SortCategory.Name:
           this.ingredients.sort((a, b) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
           break;
@@ -382,12 +384,12 @@ export class IngredientsService {
           this.ingredients.sort((a, b) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
           break;
         case SortCategory.Type:
-          this.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1); 
+          this.ingredients.sort((a, b) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
           break;
       }
 
     } else {
-      switch (this.sortMode.category) {
+      switch (sortMode.category) {
         case SortCategory.Name:
           this.ingredients.sort((b, a) => a.name < b.name ? -1 : a.name == b.name ? 0 : 1);
           break;
@@ -434,7 +436,7 @@ export class IngredientsService {
           this.ingredients.sort((b, a) => a.Location < b.Location ? -1 : a.Location == b.Location ? 0 : 1);
           break;
         case SortCategory.Type:
-          this.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1); 
+          this.ingredients.sort((b, a) => a.Type < b.Type ? -1 : a.Type == b.Type ? 0 : 1);
           break;
       }
     }

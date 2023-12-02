@@ -15,6 +15,7 @@ export class AppComponent implements OnInit {
   title = 'PotionomicsBruteforcer';
   senses = Senses;
   qualitySelection: string[] = []
+  recipeSort: string[] = []
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
@@ -22,6 +23,7 @@ export class AppComponent implements OnInit {
     public dataService: DataService
   ) {
     this.qualitySelection = Object.keys(this.recipeService.qualities)
+    this.recipeSort = Object.keys(this.recipeService.recipeSorts)
     this.recipeService.buildIngredients();
   }
 
@@ -31,7 +33,13 @@ export class AppComponent implements OnInit {
     this.mainLoopService.start();
   }
 
-  /** Changes the sorting in the data service */
+  /** Changes the ingredient sorting */
+  sortClick(mode: number){
+    this.ingredientsService.changeSortMode(mode); 
+    this.ingredientsService.ingredientSort();
+  }
+
+  /** Checks the sorting for arrow display */
   sortCheck(category: number, desc: boolean) {
     return this.ingredientsService.sortMode.category == category && this.ingredientsService.sortMode.descending == desc;
   }
@@ -137,13 +145,17 @@ export class AppComponent implements OnInit {
 
   /** Sets desired illusions to include in recipe. */
   setIllusion(sense: number) {
-    this.recipeService.illusion = this.recipeService.illusion == sense ? 0 : sense;
+    if (this.recipeService.illusion == sense) {
+      this.recipeService.illusion = 0;
+    } else {
+      this.recipeService.illusion = sense;
+      this.recipeService.traits[sense] = false;
+    }
   }
 
   /** Flips the start/stop for the combination sim. */
   startClick() {
     this.mainLoopService.started = !this.mainLoopService.started;
-    this.ingredientsService.ingredientSort();
     this.recipeService.recipeSort();
     this.recipeService.recipeDisplay();
   }
@@ -167,6 +179,13 @@ export class AppComponent implements OnInit {
     if (!(event.target instanceof HTMLSelectElement)) return;
     this.recipeService.selectedQuality = event.target.value;
     this.recipeService.updateFormula();
+  }
+
+  RecipeSortUpdate(event: Event) {
+    if (!(event.target instanceof HTMLSelectElement)) return;
+    this.recipeService.selectedSort = event.target.value;
+    this.recipeService.recipeSort();
+    this.recipeService.recipeDisplay();
   }
 
   /** Displays the profit ratio. */
