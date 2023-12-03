@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Repo } from './Ingredients.repo';
+import { IngredientRepo } from './Ingredients.repo';
 
 
 export type Rarity = '9-Common' | '4-Uncommon' | '2-Rare' | '1-Epic';
@@ -32,27 +32,10 @@ export enum FormulaType {
   CurseCure
 }
 
-/** Interface for the formula templates. */
-export interface Formula {
-  type: FormulaType;
-  name: string;
-  A: number;
-  B: number;
-  C: number;
-  D: number;
-  E: number;
-  value: number;
-}
-
-
-export interface IngredientCount {
-  name: string;
-  Avail: number; // Number of this ingredient user has for potionmaking.
-}
-
 /** Interface to house both ingredients and recipes, extended as it made certain operations simpler. */
-export interface IngredientStats extends IngredientCount {
+export interface IngredientStats {
   index: number;
+  name: string;
   A: number;
   B: number;
   C: number;
@@ -68,8 +51,8 @@ export interface IngredientStats extends IngredientCount {
   Rarity: string;
   Location: string;
   Type: string;
+  Avail: number; // Number of this ingredient user has for potionmaking.
 }
-
 
 export enum SortCategory {
   None,
@@ -92,10 +75,22 @@ export enum SortCategory {
   RankValue
 }
 
-
+/** Interface for sort category and direction */
 export interface SortMode {
   category: SortCategory;
   descending: boolean;
+}
+
+/** Interface for the formula templates. */
+interface Formula {
+  type: FormulaType;
+  name: string;
+  A: number;
+  B: number;
+  C: number;
+  D: number;
+  E: number;
+  value: number;
 }
 
 /**
@@ -311,7 +306,7 @@ export class IngredientsService {
     }
   ]
 
-  repo = new Repo;
+  repo = new IngredientRepo;
   sortMode: SortMode = { category: SortCategory.None, descending: false };
   sortMode2: SortMode = { category: SortCategory.None, descending: false }; // Secondary sort, since that kinda matters.
   filter = false;

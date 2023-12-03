@@ -5,7 +5,7 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Added quality selection, secondary sorting saves properly, and recipe must-haves. Bugfixes for traits being negated, price increase for Rank, wild empty recipe, and ignored ingredients.">
+                matTooltip="Changed inventory save structure. Added quality selection, secondary sorting saves properly, heuristic selection, and recipe must-haves. Bugfixes for traits being negated, price increase for Rank, wild empty recipe, and ignored ingredients.">
                 v.0.2.0 Hover for more</span>
             <div *ngIf="!mainLoopService.started"> paused</div>
             <div [matTooltipShowDelay]="1000" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>

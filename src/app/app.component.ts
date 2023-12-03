@@ -12,7 +12,7 @@ import { DataService } from './data.service';
 })
 export class AppComponent implements OnInit {
 
-  title = 'PotionomicsBruteforcer';
+  title = 'Potionomics Recipe Finder';
   senses = Senses;
   qualitySelection: string[] = []
   recipeSort: string[] = []

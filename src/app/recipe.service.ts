@@ -4,14 +4,13 @@ import { MainLoopService } from './main-loop.service';
 import { RankRepo, PotionRank } from './potion-rank.repo';
 
 
-interface NumDict {
-  [key: string]: number
-}
-
-interface Recipe extends IngredientStats {
-  rank: PotionRank;
-  value: number;
-  deviation: number;
+export enum Senses {
+  None,
+  Taste,
+  Touch,
+  Smell,
+  Sight,
+  Sound
 }
 
 export enum RecipeSort {
@@ -22,13 +21,10 @@ export enum RecipeSort {
   Profit
 }
 
-export enum Senses {
-  None,
-  Taste,
-  Touch,
-  Smell,
-  Sight,
-  Sound
+interface Recipe extends IngredientStats {
+  rank: PotionRank;
+  value: number;
+  deviation: number;
 }
 
 /** Contains everything from settings to the main combination methods and all related members. */
@@ -42,20 +38,20 @@ export class RecipeService {
   private percD = 0 / 100;
   private percE = 0 / 100;
   private topDeviate = 0 + 0.0025; // Perfect: 0 Very: 0.05 Stable: 0.15 Unstable 0.25 | allowance 0.25%
-  private IngredAvail: NumDict = {}; // Holds the available ingredients for the working recipe.
+  private IngredAvail: Record<string, number> = {}; // Holds the available ingredients for the working recipe.
   private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
   private rankRepo = new RankRepo;
   private recipeList: Recipe[] = [];
 
   selectedQuality = "Perfect";
-  qualities: NumDict = {
+  qualities: Record<string, number> = {
     "Perfect": 0,
     "Very Stable": 0.05,
     "Stable": 0.15,
     "Unstable": 0.25,
   };
   selectedSort = "Profit";
-  recipeSorts: NumDict = {
+  recipeSorts: Record<string, number> = {
     "Cost": RecipeSort.Cost,
     "Rank": RecipeSort.Rank,
     "Value": RecipeSort.Value,

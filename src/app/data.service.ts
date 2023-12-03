@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { IngredientsService, FormulaType, SortCategory, SortMode, IngredientCount} from './ingredients.service';
+import { IngredientsService, FormulaType, SortCategory, SortMode } from './ingredients.service';
 import { RecipeService } from './recipe.service';
 
 
 /** holds the settings and some user entered data for ingredients */
 interface Data {
-  ingredients: IngredientCount[],
+  ingredients: Record<string, number>,
   selectedFormula: FormulaType,
   selectedQuality: string,
   selectedSort: string,
@@ -35,10 +35,10 @@ export class DataService {
 
   /** Saves user settings and inventory counts. */
   saveData() {
-    const ingredients: IngredientCount[] = this.ingredientsService.ingredients.map(x => ({
-      name: x.name,
-      Avail: x.Avail,
-    })); // Backwards compatibility, used to save as IngredientStats.
+    const ingredients: Record<string, number> = {}
+    this.ingredientsService.ingredients.forEach(x => {
+      if (x.Avail) ingredients[x.name] = x.Avail;
+    });
     console.log(ingredients);
     const data: Data = {
       sortMode: this.ingredientsService.sortMode,
@@ -67,11 +67,11 @@ export class DataService {
     }
     if (str) {
       const data = JSON.parse(str) as Data;
-
       this.ingredientsService.ingredients.forEach(ingredient => {
-        const index = data.ingredients.find(x => x.name === ingredient.name);
-        ingredient.Avail = index ? index.Avail : 0;
-      }); 
+          const index = data.ingredients[ingredient.name];
+          ingredient.Avail = index ? index : 0;
+      });
+
       this.ingredientsService.sortMode2 = data.sortMode2 || { category: SortCategory.None, descending: false };
       this.ingredientsService.sortMode = data.sortMode || { category: SortCategory.None, descending: false };
       this.ingredientsService.filter = data.filter || false;
