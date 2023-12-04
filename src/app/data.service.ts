@@ -83,11 +83,9 @@ export class DataService {
         }
       }
 
-      this.sortingService.sortMode2 = data.sortMode2 || { category: SortCategory.None, descending: false };
-      this.sortingService.sortMode = data.sortMode || { category: SortCategory.None, descending: false };
+      this.sortingService.sortMode2 = data.sortMode2 || { category: SortCategory.Total, descending: false };
+      this.sortingService.sortMode = data.sortMode || { category: SortCategory.Location, descending: false };
       this.sortingService.filter = data.filter || false;
-      this.sortingService.ingredientSort(this.sortingService.sortMode2); // Secondary sorts first.
-      this.sortingService.ingredientSort(this.sortingService.sortMode);
 
       this.recipeService.selectedFormula = data.selectedFormula || 0;
       this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
@@ -98,9 +96,11 @@ export class DataService {
       this.recipeService.traits = data.traits || [false, false, false, false, false];
       this.recipeService.illusion = data.illusion || 0;
       this.recipeService.shopBonus = data.shopBonus || 0;
-      this.recipeService.updateFormula();
 
     } 
+    this.sortingService.ingredientSort(this.sortingService.sortMode2); // Secondary sorts first.
+    this.sortingService.ingredientSort(this.sortingService.sortMode);
+    this.recipeService.updateFormula();
   }
 
   /** Removes all settings. */

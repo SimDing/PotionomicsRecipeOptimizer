@@ -93,7 +93,7 @@ export class RecipeService {
   /** Initializes the working index of the search algorithms. */
   indexerInit() {
     this.indexer = [];
-    for (let i = 0; i < this.ingredCount; i++) {
+    for (let i = 0; i < this.ingredSelection; i++) {
       this.indexer.push(this.ingredientList.length - 1);
     }
   }
@@ -189,7 +189,7 @@ export class RecipeService {
 
   /** Macro method to create a new blank recipe */
   initRecipe(): Recipe {
-    return {
+    const result = {
       A: 0,
       B: 0,
       C: 0,
@@ -210,6 +210,7 @@ export class RecipeService {
       value: 0,
       deviation: 0,
     }
+    return result;
   }
 
   /** Builds the viable ingredients list for the active recipe.  
@@ -263,7 +264,7 @@ export class RecipeService {
     }
 
     // Combine a new ingredient into the recipe
-    recipe = this.addIngredient(recipe);
+    recipe = this.updateRecipe(recipe);
 
     // @TODO need to improve architecture and detach indices.
     // Check if the current ingredient slot returned nothing
@@ -284,7 +285,7 @@ export class RecipeService {
     }
 
     // Check if we've reached the final slot
-    if (this.slotIndex < this.ingredCount - 1) {
+    if (recipe.ingredients.length < this.ingredCount) {
       // @TODO improve recursion with local indices and remove global member.
       // Recursively move to the next slot. Good for dynamic depth.
       this.slotIndex++;
@@ -295,37 +296,6 @@ export class RecipeService {
     }
     // If we're here then we're coming up for air to check frame time and for a new round.
     this.slotIndex = 0;
-  }
-
-  /** Adds an ingredient to the recipe */
-  addIngredient(recipe: Recipe): Recipe | undefined {
-    const pos = this.indexer[this.slotIndex]
-    const result = this.findIngredient(recipe, pos);
-    this.indexer[this.slotIndex] = result.pos;
-    if (result.deviation === undefined || result.pos < 0) {
-      return;
-    }
-
-    const ingredientName = this.ingredientList[result.pos];
-    const ingredient = this.ingredientsService.ingredients[ingredientName]
-    
-    recipe.ingredients[this.slotIndex] = ingredientName;
-    recipe.A += ingredient.A;
-    recipe.B += ingredient.B;
-    recipe.C += ingredient.C;
-    recipe.D += ingredient.D;
-    recipe.E += ingredient.E;
-    recipe.Total += ingredient.Total;
-    recipe.cost += ingredient.cost;
-    recipe.Taste = ingredient.Taste < 0 || recipe.Taste < 0 ? -5 : ingredient.Taste > 0 ? 5 : recipe.Taste;
-    recipe.Touch = ingredient.Touch < 0 || recipe.Touch < 0 ? -5 : ingredient.Touch > 0 ? 5 : recipe.Touch;
-    recipe.Smell = ingredient.Smell < 0 || recipe.Smell < 0 ? -5 : ingredient.Smell > 0 ? 5 : recipe.Smell;
-    recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5 : ingredient.Sight > 0 ? 5 : recipe.Sight;
-    recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5 : ingredient.Sound > 0 ? 5 : recipe.Sound;
-    recipe.deviation = result.deviation;
-    this.tempAvail[ingredientName]--;
-
-    return recipe;
   }
 
   /** Joins ingredients to form a recipe.
@@ -394,6 +364,43 @@ export class RecipeService {
     }
 
     return { deviation, pos };
+  }
+
+  /** Adds an ingredient to the recipe */
+  addIngredient(recipe: Recipe, ingredientName: string): Recipe {
+    const ingredient = this.ingredientsService.ingredients[ingredientName]
+    
+    recipe.ingredients[this.slotIndex] = ingredientName;
+    recipe.A += ingredient.A;
+    recipe.B += ingredient.B;
+    recipe.C += ingredient.C;
+    recipe.D += ingredient.D;
+    recipe.E += ingredient.E;
+    recipe.Total += ingredient.Total;
+    recipe.cost += ingredient.cost;
+    recipe.Taste = ingredient.Taste < 0 || recipe.Taste < 0 ? -5 : ingredient.Taste > 0 ? 5 : recipe.Taste;
+    recipe.Touch = ingredient.Touch < 0 || recipe.Touch < 0 ? -5 : ingredient.Touch > 0 ? 5 : recipe.Touch;
+    recipe.Smell = ingredient.Smell < 0 || recipe.Smell < 0 ? -5 : ingredient.Smell > 0 ? 5 : recipe.Smell;
+    recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5 : ingredient.Sight > 0 ? 5 : recipe.Sight;
+    recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5 : ingredient.Sound > 0 ? 5 : recipe.Sound;
+    this.tempAvail[ingredientName]--;
+
+    return recipe;
+  }
+
+  updateRecipe(recipe: Recipe): Recipe | undefined {
+    
+    const pos = this.indexer[this.slotIndex]
+    const result = this.findIngredient(recipe, pos);
+    this.indexer[this.slotIndex] = result.pos;
+    if (result.deviation === undefined || result.pos < 0) {
+      return;
+    }
+    recipe.deviation = result.deviation;
+
+    const ingredientName = this.ingredientList[result.pos];
+    return this.addIngredient(recipe, ingredientName);
+
   }
 
   /** Finalizes a valid recipe by applying illusion, ranking, and pushing to the recipe list.

@@ -37,8 +37,8 @@ export interface SortMode {
 export class SortingService {
 
   filter = false;
-  sortMode: SortMode = { category: SortCategory.None, descending: false };
-  sortMode2: SortMode = { category: SortCategory.None, descending: false }; // Secondary sort, since that kinda matters.
+  sortMode: SortMode = { category: SortCategory.Location, descending: false };
+  sortMode2: SortMode = { category: SortCategory.Total, descending: false }; // Secondary sort, since that kinda matters.
   sortedList: string[] = Object.keys(this.ingredientsService.ingredients)
 
   constructor(
@@ -117,7 +117,7 @@ export class SortingService {
     } else {
       switch (sortMode.category) {
         case SortCategory.Name:
-          this.sortedList.sort((a, b) => a < b ? -1 : a == b ? 0 : 1);
+          this.sortedList.sort((b, a) => a < b ? -1 : a == b ? 0 : 1);
           break;
         case SortCategory.A:
           this.sortedList.sort((b, a) => this.ingredientsService.ingredients[a].A - this.ingredientsService.ingredients[b].A);

@@ -50,6 +50,37 @@ export class AppComponent implements OnInit {
     return this.sortingService.sortMode.category == category && this.sortingService.sortMode.descending == desc;
   }
 
+  /** Flips the filtration setting. */
+  filterRecipe() {
+    this.sortingService.filter = !this.sortingService.filter;
+  }
+
+  /** Sets the style for the matching ingredients by recipe depending on filter. */
+  ingredCheck(i: string): string {
+    let str = this.recipeService.ingredientList.find((a) => (a == i)) ? "GREEN" : "";
+    str = this.sortingService.filter ? str.concat("INVISIBLE") : str;
+    return str;
+  }
+
+  /** Flips the start/stop for the combination sim. */
+  startClick() {
+    this.mainLoopService.started = !this.mainLoopService.started;
+    this.recipeService.recipeSort();
+    this.recipeService.recipeDisplay();
+    this.recipeService.ingredCount = this.recipeService.ingredSelection;
+    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
+  }
+
+  /** Resets the combination sim. */
+  resetClick() {
+    this.recipeService.updateFormula();
+    this.recipeService.indexerInit();
+    this.recipeService.searchInit();
+  }
+
+  
+  // DIRECT EVENT HANDLERS
+
   /** Sets the available to the amounts that Quinn will sell in a given day. */
   setToQuinns() {
     for (const ingredient of this.ingredientsService.ingredientNames) {
@@ -59,33 +90,7 @@ export class AppComponent implements OnInit {
         4 : this.ingredientsService.ingredients[ingredient].Rarity == '2-Rare' ?
         2 : 1;
     }
-    this.recipeService.updateFormula();
-  }
-
-  /** Changes all available to a specific number, generally for zeroing. */
-  allAvailChange(event: Event) {
-    if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
-    for (const name of this.ingredientsService.ingredientNames) {
-      this.ingredientsService.ingredientAvailability[name] = numCheck;
-    }
-    this.recipeService.updateFormula();
-  }
-
-  /** Updates a specific ingredient's available number. */
-  ingredAvailChange(event: Event, name: string) {
-    if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
-    this.ingredientsService.ingredientAvailability[name] = numCheck;
-    this.recipeService.updateFormula();
-  }
-
-  /** Updates a specific ingredient's available number. */
-  mustHaveChange(event: Event, name: string) {
-    if (!(event.target instanceof HTMLInputElement)) return;
-    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 14), 0);
-    this.ingredientsService.ingredientAvailability[name] = numCheck;
-    this.recipeService.updateFormula();
+    this.resetClick();
   }
 
   /** Halves the current available number for entire inventory. */
@@ -93,6 +98,7 @@ export class AppComponent implements OnInit {
     for (const name of this.ingredientsService.ingredientNames) {
       this.ingredientsService.ingredientAvailability[name] = Math.floor(this.ingredientsService.ingredientAvailability[name] / 2);
     }
+    this.resetClick();
   }
 
   /** Removes available number of ingredients of a specific rarity. */
@@ -101,6 +107,7 @@ export class AppComponent implements OnInit {
       if (this.ingredientsService.ingredients[name].Rarity == str)
         this.ingredientsService.ingredientAvailability[name] = 0;
     }
+    this.resetClick();
   }
 
   /** Removes available number of ingredients not available on or after the specified week.  */
@@ -109,6 +116,55 @@ export class AppComponent implements OnInit {
       if (parseInt(this.ingredientsService.ingredients[name].Location) >= week)
         this.ingredientsService.ingredientAvailability[name] = 0;
     }
+    this.resetClick();
+  }
+
+  /** Sets desired traits to include in recipe. */
+  setTrait(sense: number) {
+    this.recipeService.traits[sense] = !this.recipeService.traits[sense];
+    this.resetClick();
+  }
+
+  /** Sets desired illusions to include in recipe. */
+  setIllusion(sense: number) {
+    if (this.recipeService.illusion == sense) {
+      this.recipeService.illusion = 0;
+    } else {
+      this.recipeService.illusion = sense;
+      this.recipeService.traits[sense] = false;
+    }
+    this.resetClick();
+  }
+
+
+  // INDIRECT EVENT HANDLERS
+
+  /** Updates a specific ingredient's available number. */
+  ingredAvailChange(event: Event, name: string) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
+    this.ingredientsService.ingredientAvailability[name] = numCheck;
+    this.resetClick();
+  }
+
+  /** Changes all available to a specific number, generally for zeroing or filling. */
+  allAvailChange(event: Event) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
+    for (const name of this.ingredientsService.ingredientNames) {
+      this.ingredientsService.ingredientAvailability[name] = numCheck;
+    }
+    this.resetClick();
+  }
+
+  /** Updates a specific ingredient's must-have number. 
+   * @TODO Implement
+  */
+  mustHaveChange(event: Event, name: string) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 14), 0);
+    this.ingredientsService.ingredientAvailability[name] = numCheck;
+    this.resetClick();
   }
 
   /** Checks for user changes to ingredient count. */
@@ -132,73 +188,33 @@ export class AppComponent implements OnInit {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 10000), 0);
     this.recipeService.shopBonus = numCheck;
-    this.recipeService.updateFormula();
+    this.resetClick();
   }
-
-  /** Flips the filtration setting. */
-  filterRecipe() {
-    this.sortingService.filter = !this.sortingService.filter;
-  }
-
-  /** Sets the style for the matching ingredients by recipe depending on filter. */
-  ingredCheck(i: string): string {
-    let str = this.recipeService.ingredientList.find((a) => (a == i)) ? "GREEN" : "";
-    str = this.sortingService.filter ? str.concat("INVISIBLE") : str;
-    return str;
-  }
-
-  /** Sets desired traits to include in recipe. */
-  setTrait(sense: number) {
-    this.recipeService.traits[sense] = !this.recipeService.traits[sense];
-    this.recipeService.updateFormula();
-  }
-
-  /** Sets desired illusions to include in recipe. */
-  setIllusion(sense: number) {
-    if (this.recipeService.illusion == sense) {
-      this.recipeService.illusion = 0;
-    } else {
-      this.recipeService.illusion = sense;
-      this.recipeService.traits[sense] = false;
-    }
-  }
-
-  /** Flips the start/stop for the combination sim. */
-  startClick() {
-    this.mainLoopService.started = !this.mainLoopService.started;
-    this.recipeService.recipeSort();
-    this.recipeService.recipeDisplay();
-    this.recipeService.ingredCount = this.recipeService.ingredSelection;
-    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
-  }
-
-  /** Resets the combination sim. */
-  resetClick() {
-    this.recipeService.indexerInit();
-    this.recipeService.searchInit();
-  }
-
   
   /** Updates the formula in use. */
   formulaUpdate(event: Event) {
     if (!(event.target instanceof HTMLSelectElement)) return;
     this.recipeService.selectedFormula = parseInt(event.target.value);
-    this.recipeService.updateFormula();
+    this.resetClick();
   }
 
   /** Updates the minimum allowed quality. */
   qualityUpdate(event: Event) {
     if (!(event.target instanceof HTMLSelectElement)) return;
     this.recipeService.selectedQuality = event.target.value;
-    this.recipeService.updateFormula();
+    this.resetClick();
   }
 
+  /** Updates Recipe Sorting */
   RecipeSortUpdate(event: Event) {
     if (!(event.target instanceof HTMLSelectElement)) return;
     this.recipeService.selectedSort = event.target.value;
     this.recipeService.recipeSort();
     this.recipeService.recipeDisplay();
   }
+
+
+  // HELPERS
 
   /** Displays the profit ratio. */
   recipeRatio(i: number) {
@@ -210,17 +226,4 @@ export class AppComponent implements OnInit {
   round(i: number) {
     return Math.round(i*100)/100
   }
-
-  /* Abandoned the idea of people importing CSV updates, most users would just be confused.
-    importCSVClick() {
-      //this.ingredientsService.parseCSV();
-    }
-  
-    exportCSVClick() {
-      /*  const element = document.createElement('a');
-        element.setAttribute('href', `data:text/plain;charset=utf-8,${this.title + "\n1,2,3,4,5\n6,7,8,9,0"}`);
-        element.setAttribute('download', `PotionsList.csv`);
-        const event = new MouseEvent("click");
-        element.dispatchEvent(event);*//*
-}*/
 }
