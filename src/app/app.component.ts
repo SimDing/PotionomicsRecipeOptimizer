@@ -3,6 +3,7 @@ import { IngredientsService, Rarity } from './ingredients.service';
 import { RecipeService, Senses } from './recipe.service';
 import { MainLoopService } from './main-loop.service';
 import { DataService } from './data.service';
+import { SortingService } from './sorting.service';
 
 
 @Component({
@@ -13,14 +14,18 @@ import { DataService } from './data.service';
 export class AppComponent implements OnInit {
 
   title = 'Potionomics Recipe Finder';
+  
   senses = Senses;
+  ingredientCountDisplay = []; // Used to extend the recipe results table based on ingredient count
   qualitySelection: string[] = []
   recipeSort: string[] = []
+
   constructor(
     public mainLoopService: MainLoopService,
     public ingredientsService: IngredientsService,
     public recipeService: RecipeService,
-    public dataService: DataService
+    public sortingService: SortingService,
+    public dataService: DataService,
   ) {
     this.qualitySelection = Object.keys(this.recipeService.qualities)
     this.recipeSort = Object.keys(this.recipeService.recipeSorts)
@@ -30,24 +35,29 @@ export class AppComponent implements OnInit {
   /** Startup */
   ngOnInit(): void {
     this.dataService.loadData();
+    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
     this.mainLoopService.start();
   }
 
   /** Changes the ingredient sorting */
   sortClick(mode: number){
-    this.ingredientsService.changeSortMode(mode); 
-    this.ingredientsService.ingredientSort();
+    this.sortingService.changeSortMode(mode); 
+    this.sortingService.ingredientSort();
   }
 
   /** Checks the sorting for arrow display */
   sortCheck(category: number, desc: boolean) {
-    return this.ingredientsService.sortMode.category == category && this.ingredientsService.sortMode.descending == desc;
+    return this.sortingService.sortMode.category == category && this.sortingService.sortMode.descending == desc;
   }
 
   /** Sets the available to the amounts that Quinn will sell in a given day. */
   setToQuinns() {
-    for (const ingredient of this.ingredientsService.ingredients) {
-      ingredient.Avail = ingredient.Rarity == '9-Common' ? 10 : ingredient.Rarity == '4-Uncommon' ? 4 : ingredient.Rarity == '2-Rare' ? 2 : 1;
+    for (const ingredient of this.ingredientsService.ingredientNames) {
+      this.ingredientsService.ingredientAvailability[ingredient] = 
+        this.ingredientsService.ingredients[ingredient].Rarity == '9-Common' ? 
+        10 : this.ingredientsService.ingredients[ingredient].Rarity == '4-Uncommon' ?
+        4 : this.ingredientsService.ingredients[ingredient].Rarity == '2-Rare' ?
+        2 : 1;
     }
     this.recipeService.updateFormula();
   }
@@ -56,48 +66,48 @@ export class AppComponent implements OnInit {
   allAvailChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
-    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
-      this.ingredientsService.ingredients[i].Avail = numCheck;
+    for (const name of this.ingredientsService.ingredientNames) {
+      this.ingredientsService.ingredientAvailability[name] = numCheck;
     }
     this.recipeService.updateFormula();
   }
 
   /** Updates a specific ingredient's available number. */
-  ingredAvailChange(event: Event, index: number) {
+  ingredAvailChange(event: Event, name: string) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 999), 0);
-    this.ingredientsService.ingredients[index].Avail = numCheck;
+    this.ingredientsService.ingredientAvailability[name] = numCheck;
     this.recipeService.updateFormula();
   }
 
   /** Updates a specific ingredient's available number. */
-  mustHaveChange(event: Event, index: number) {
+  mustHaveChange(event: Event, name: string) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 14), 0);
-    this.ingredientsService.ingredients[index].Avail = numCheck;
+    this.ingredientsService.ingredientAvailability[name] = numCheck;
     this.recipeService.updateFormula();
   }
 
   /** Halves the current available number for entire inventory. */
   halveInventory() {
-    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
-      this.ingredientsService.ingredients[i].Avail = Math.floor(this.ingredientsService.ingredients[i].Avail / 2);
+    for (const name of this.ingredientsService.ingredientNames) {
+      this.ingredientsService.ingredientAvailability[name] = Math.floor(this.ingredientsService.ingredientAvailability[name] / 2);
     }
   }
 
   /** Removes available number of ingredients of a specific rarity. */
   selectRarityChange(str: Rarity) {
-    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
-      if (this.ingredientsService.ingredients[i].Rarity == str)
-        this.ingredientsService.ingredients[i].Avail = 0;
+    for (const name of this.ingredientsService.ingredientNames) {
+      if (this.ingredientsService.ingredients[name].Rarity == str)
+        this.ingredientsService.ingredientAvailability[name] = 0;
     }
   }
 
   /** Removes available number of ingredients not available on or after the specified week.  */
   selectWeekChange(week: number) {
-    for (let i = 0; i < this.ingredientsService.ingredients.length; i++) {
-      if (parseInt(this.ingredientsService.ingredients[i].Location[0]) >= week)
-        this.ingredientsService.ingredients[i].Avail = 0;
+    for (const name of this.ingredientsService.ingredientNames) {
+      if (parseInt(this.ingredientsService.ingredients[name].Location) >= week)
+        this.ingredientsService.ingredientAvailability[name] = 0;
     }
   }
 
@@ -105,7 +115,7 @@ export class AppComponent implements OnInit {
   ingredCountChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 2 : event.target.valueAsNumber, 14), 2);
-    this.recipeService.ingredCount = numCheck;
+    this.recipeService.ingredSelection = numCheck;
     this.resetClick();
   }
 
@@ -127,13 +137,13 @@ export class AppComponent implements OnInit {
 
   /** Flips the filtration setting. */
   filterRecipe() {
-    this.ingredientsService.filter = !this.ingredientsService.filter;
+    this.sortingService.filter = !this.sortingService.filter;
   }
 
   /** Sets the style for the matching ingredients by recipe depending on filter. */
-  ingredCheck(i: number): string {
-    let str = this.recipeService.ingredientList.find((a) => (a.index == i)) ? "GREEN" : "";
-    str = this.ingredientsService.filter ? str.concat("INVISIBLE") : str;
+  ingredCheck(i: string): string {
+    let str = this.recipeService.ingredientList.find((a) => (a == i)) ? "GREEN" : "";
+    str = this.sortingService.filter ? str.concat("INVISIBLE") : str;
     return str;
   }
 
@@ -158,6 +168,8 @@ export class AppComponent implements OnInit {
     this.mainLoopService.started = !this.mainLoopService.started;
     this.recipeService.recipeSort();
     this.recipeService.recipeDisplay();
+    this.recipeService.ingredCount = this.recipeService.ingredSelection;
+    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
   }
 
   /** Resets the combination sim. */
@@ -192,6 +204,11 @@ export class AppComponent implements OnInit {
   recipeRatio(i: number) {
     const recipe = this.recipeService.recipeListDisplay[i];
     return Math.floor((recipe.value * this.recipeService.potionCount() - recipe.cost) / recipe.cost * 100) / 100;
+  }
+
+  /** Display helper function, rounds to two decimals */
+  round(i: number) {
+    return Math.round(i*100)/100
   }
 
   /* Abandoned the idea of people importing CSV updates, most users would just be confused.

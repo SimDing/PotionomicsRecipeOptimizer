@@ -22,6 +22,7 @@ export enum RecipeSort {
 }
 
 interface Recipe extends IngredientStats {
+  ingredients: string[];
   rank: PotionRank;
   value: number;
   deviation: number;
@@ -38,7 +39,7 @@ export class RecipeService {
   private percD = 0 / 100;
   private percE = 0 / 100;
   private topDeviate = 0 + 0.0025; // Perfect: 0 Very: 0.05 Stable: 0.15 Unstable 0.25 | allowance 0.25%
-  private IngredAvail: Record<string, number> = {}; // Holds the available ingredients for the working recipe.
+  private tempAvail: Record<string, number> = {}; // Holds the available ingredients for the working recipe.
   private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
   private rankRepo = new RankRepo;
   private recipeList: Recipe[] = [];
@@ -59,7 +60,7 @@ export class RecipeService {
     "Profit": RecipeSort.Profit,
   };
   recipeListDisplay: Recipe[] = []; // Used to display 1000 results on frontend.
-  ingredientList: IngredientStats[] = []; // Used for display style changes
+  ingredientList: string[] = []; // Used for display style changes
   indexer: number[] = []; // Used in display
   totalCount = 0; // For display
   hitCount = 0; // For display
@@ -68,6 +69,7 @@ export class RecipeService {
   selectedFormula = 0;
   maxMagamin = 375;
   ingredCount = 8;
+  ingredSelection = 8;
   shopBonus = 0;
 
   constructor(
@@ -75,21 +77,16 @@ export class RecipeService {
     public ingredientsService: IngredientsService,
   ) {
     mainLoopService.tickSubject.subscribe(() => {
-      this.discoverInit();
+      this.discoverInit(); // Entry point
     });
   }
 
 
   // INIT
 
-  /** Initializes the recipe search. */
+  /** Initializes a recipe search loop. */
   discoverInit() {
-    this.IngredAvail = {}
-    for (let i = 0; i < this.ingredientsService.ingredients.length - 1; i++) { // this.IngredAvail[this.ingredientList[this.indexer[this.slotIndex]].index]
-      if (this.ingredientsService.ingredients[i].Avail > 0) {
-        this.IngredAvail[this.ingredientsService.ingredients[i].name] = this.ingredientsService.ingredients[i].Avail;
-      }
-    }
+    this.tempAvail = { ...this.ingredientsService.ingredientAvailability }
     this.discoverNewRecipe(this.initRecipe());
   }
 
@@ -128,19 +125,19 @@ export class RecipeService {
   recipeSort() {
     switch (this.selectedSort) {
       case "Cost":
-        this.recipeList.sort((a, b) => b.cost - a.cost);
+        this.recipeList.sort((b, a) => a.cost - b.cost);
         break;
       case "Rank":
-        this.recipeList.sort((a, b) => b.rank.rank < a.rank.rank ? -1: a.rank.rank == b.rank.rank ? 0 : 1);
+        this.recipeList.sort((b, a) => a.rank.mult - b.rank.mult);
         break;
       case "Value":
-        this.recipeList.sort((a, b) => b.value - a.value);
+        this.recipeList.sort((b, a) => a.value - b.value);
         break;
       case "Ratio":
-        this.recipeList.sort((a, b) => (b.value * this.potionCount() - b.cost) / b.cost - (a.value * this.potionCount() - a.cost) / a.cost);
+        this.recipeList.sort((b, a) => (a.value * this.potionCount() - a.cost) / a.cost - (b.value * this.potionCount() - b.cost) / b.cost);
         break;
       case "Profit":
-        this.recipeList.sort((a, b) => (b.value * this.potionCount() - b.cost) - (a.value * this.potionCount() - a.cost));
+        this.recipeList.sort((b, a) => (a.value * this.potionCount() - a.cost) - (b.value * this.potionCount() - b.cost));
         break;
     }
   }
@@ -193,8 +190,6 @@ export class RecipeService {
   /** Macro method to create a new blank recipe */
   initRecipe(): Recipe {
     return {
-      index: 0,
-      name: "",
       A: 0,
       B: 0,
       C: 0,
@@ -210,7 +205,7 @@ export class RecipeService {
       Rarity: "",
       Location: "",
       Type: "",
-      Avail: 0,
+      ingredients: [],
       rank: this.rankRepo.ranks[0],
       value: 0,
       deviation: 0,
@@ -220,9 +215,9 @@ export class RecipeService {
   /** Builds the viable ingredients list for the active recipe.  
    * @param arr the list of ingredients to consider. defaults to ingredients stored in ingredients service
   */
-  buildIngredients(arr: IngredientStats[] = this.ingredientsService.ingredients) {
+  buildIngredients() {
     let deviation = 0; // Init the deviation variable
-    this.ingredientList = JSON.parse(JSON.stringify(arr)); // Deep copy the input 
+    this.ingredientList = [...this.ingredientsService.ingredientNames]; // Shallow copy the names array 
     let i = this.ingredientList.length;
     const validA = this.percA > 0;
     const validB = this.percB > 0;
@@ -231,28 +226,29 @@ export class RecipeService {
     const validE = this.percE > 0;
 
     // Sort and Filter out unwanted materials
-    this.ingredientList.sort((a, b) => a.Total - b.Total);
+    this.ingredientList.sort((a, b) => this.ingredientsService.ingredients[a].Total - this.ingredientsService.ingredients[b].Total);
     while (i > 0) {
       i--;
+      const ingredient = this.ingredientsService.ingredients[this.ingredientList[i]]
       deviation = // Measure if an ingredient goes over the maximum viable for the target
-        Math.max((this.ingredientList[i].A / this.maxMagamin) - this.percA, 0) +
-        Math.max((this.ingredientList[i].B / this.maxMagamin) - this.percB, 0) +
-        Math.max((this.ingredientList[i].C / this.maxMagamin) - this.percC, 0) +
-        Math.max((this.ingredientList[i].D / this.maxMagamin) - this.percD, 0) +
-        Math.max((this.ingredientList[i].E / this.maxMagamin) - this.percE, 0);
+        Math.max((ingredient.A / this.maxMagamin) - this.percA, 0) +
+        Math.max((ingredient.B / this.maxMagamin) - this.percB, 0) +
+        Math.max((ingredient.C / this.maxMagamin) - this.percC, 0) +
+        Math.max((ingredient.D / this.maxMagamin) - this.percD, 0) +
+        Math.max((ingredient.E / this.maxMagamin) - this.percE, 0);
 
       if (deviation > this.topDeviate || // Remove ingredients that don't match filters and deviate too far.
-        this.ingredientList[i].Avail == 0 || // and are empty
-        (this.ingredientList[i].Taste < 0 && this.traits[Senses.Taste]) ||
-        (this.ingredientList[i].Touch < 0 && this.traits[Senses.Touch]) ||
-        (this.ingredientList[i].Smell < 0 && this.traits[Senses.Smell]) ||
-        (this.ingredientList[i].Sight < 0 && this.traits[Senses.Sight]) ||
-        (this.ingredientList[i].Sound < 0 && this.traits[Senses.Sound]) ||
-        !(((this.ingredientList[i].A > 0) == validA && validA) || // This section checks to see if the ingredient has anything of value to add.  
-          ((this.ingredientList[i].B > 0) == validB && validB) || // No point adding an ingredient that is below deviation but has no value.
-          ((this.ingredientList[i].C > 0) == validC && validC) ||
-          ((this.ingredientList[i].D > 0) == validD && validD) ||
-          ((this.ingredientList[i].E > 0) == validE && validE))
+        this.ingredientsService.ingredientAvailability[this.ingredientList[i]] == 0 || // and are empty
+        (ingredient.Taste < 0 && this.traits[Senses.Taste]) ||
+        (ingredient.Touch < 0 && this.traits[Senses.Touch]) ||
+        (ingredient.Smell < 0 && this.traits[Senses.Smell]) ||
+        (ingredient.Sight < 0 && this.traits[Senses.Sight]) ||
+        (ingredient.Sound < 0 && this.traits[Senses.Sound]) ||
+        !(((ingredient.A > 0) == validA && validA) || // This section checks to see if the ingredient has anything of value to add.  
+          ((ingredient.B > 0) == validB && validB) || // No point adding an ingredient that is below deviation but has no value.
+          ((ingredient.C > 0) == validC && validC) ||
+          ((ingredient.D > 0) == validD && validD) ||
+          ((ingredient.E > 0) == validE && validE))
       ) {
         this.ingredientList.splice(i, 1); // Cut the fat.
       }
@@ -310,11 +306,10 @@ export class RecipeService {
       return;
     }
 
-    const ingredient = this.ingredientList[result.pos];
-    if (this.slotIndex != 0) {
-      recipe.name += ", ";
-    }
-    recipe.name += ingredient.name;
+    const ingredientName = this.ingredientList[result.pos];
+    const ingredient = this.ingredientsService.ingredients[ingredientName]
+    
+    recipe.ingredients[this.slotIndex] = ingredientName;
     recipe.A += ingredient.A;
     recipe.B += ingredient.B;
     recipe.C += ingredient.C;
@@ -328,7 +323,7 @@ export class RecipeService {
     recipe.Sight = ingredient.Sight < 0 || recipe.Sight < 0 ? -5 : ingredient.Sight > 0 ? 5 : recipe.Sight;
     recipe.Sound = ingredient.Sound < 0 || recipe.Sound < 0 ? -5 : ingredient.Sound > 0 ? 5 : recipe.Sound;
     recipe.deviation = result.deviation;
-    this.IngredAvail[ingredient.name]--;
+    this.tempAvail[ingredientName]--;
 
     return recipe;
   }
@@ -337,7 +332,7 @@ export class RecipeService {
    * @returns object with deviation and pos (index) of the ingredient, or undefined and -1 if none fit.
    * @param recipe the empty or partially built recipe needing a new ingredient.
    * @param pos the current position of the slot currently being worked, moves in reverse.
-   * @TODO create params for one time or short use recursion variables and move all recipe changes here for better logic control.
+   * @TODO create params for one time or short use recursion variables.
    * @TODO allow for division heuristics
    * @TODO allow for required ingredient (something like an Avail reduction and starter recipe and higher slotIndex before calling discover. Watch out for the indexer sweeper tho)
   */
@@ -345,12 +340,12 @@ export class RecipeService {
     let deviation; // Going to need to check for recipe deviation.
 
     while (pos >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
-      this.ingredientList[pos].name
-      if (!(this.IngredAvail[this.ingredientList[pos].name] > 0)) { // Ignore ingredients that have no availability count left
+      
+      if (!(this.tempAvail[this.ingredientList[pos]] > 0)) { // Ignore ingredients that have no availability count left
         pos--;
         continue;
       }
-      const ingredient = this.ingredientList[pos];
+      const ingredient = this.ingredientsService.ingredients[this.ingredientList[pos]];
       const A = ingredient.A;
       const B = ingredient.B;
       const C = ingredient.C;

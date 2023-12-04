@@ -5,62 +5,79 @@
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
-                matTooltip="Changed inventory save structure. Added quality selection, secondary sorting saves properly, heuristic selection, and recipe must-haves. Bugfixes for traits being negated, price increase for Rank, wild empty recipe, and ignored ingredients.">
+                matTooltip="Changed inventory save architecture and doubled search performance. Added quality selection, heuristic selection, and recipe must-haves. Secondary sorting saves properly. Bugfixes for traits being negated, price increase for Rank, wild empty recipe, and ignored ingredients.">
                 v.0.2.0 Hover for more</span>
+            <div [matTooltipShowDelay]="1000"
+                matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time
+                since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             <div *ngIf="!mainLoopService.started"> paused</div>
-            <div [matTooltipShowDelay]="1000" matTooltip="If this pauses then the simulation is frozen. Stuttering is normal while running."> Time since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
-            &nbsp;
-            <div> Cauldron ingredient target: <input type="number" min="2" max="14" value="{{recipeService.ingredCount}}" (change)="ingredCountChange($event)"></div>
-            <div> Cauldron magamin max: <input type="number" min="0" max="2000" value="{{recipeService.maxMagamin}}" (change)="magaminChange($event)"></div>
-            Formula: <select (change)="formulaUpdate($event)">
-                <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
-                [selected]="formula.type === recipeService.selectedFormula">{{formula.name}}</option>
-            </select>
-            <div></div>
-            Minimum Quality: <select (change)="qualityUpdate($event)">
-                <option *ngFor="let quality of qualitySelection" value="{{quality}}"
-                [selected]="quality === recipeService.selectedQuality">{{quality}}</option>
-            </select>
-            <div [matTooltipShowDelay]="200" matTooltip="Include an average barter increase and shelf increase">
-                Shop % bonus: <input type="number" min="0" max="10000" value="{{recipeService.shopBonus}}" (change)="bonusChange($event)">
-            </div>
+            <div *ngIf="!mainLoopService.started"> Cauldron ingredient target: <input type="number" min="2" max="14"
+                    value="{{recipeService.ingredSelection}}" (change)="ingredCountChange($event)"></div>
+            <div *ngIf="!mainLoopService.started"> Cauldron magamin max: <input type="number" min="0" max="2000"
+                    value="{{recipeService.maxMagamin}}" (change)="magaminChange($event)"></div>
+            <div *ngIf="!mainLoopService.started"> Formula: <select (change)="formulaUpdate($event)">
+                    <option *ngFor="let formula of ingredientsService.formulas" value="{{formula.type}}"
+                        [selected]="formula.type === recipeService.selectedFormula">{{formula.name}}</option>
+                </select></div>
+            <div *ngIf="!mainLoopService.started"> Minimum Quality: <select (change)="qualityUpdate($event)">
+                    <option *ngFor="let quality of qualitySelection" value="{{quality}}"
+                        [selected]="quality === recipeService.selectedQuality">{{quality}}</option>
+                </select></div>
+            <div *ngIf="!mainLoopService.started" [matTooltipShowDelay]="200"
+                matTooltip="Include an average barter increase and shelf increase">
+                Shop % bonus: <input type="number" min="0" max="10000" value="{{recipeService.shopBonus}}"
+                    (change)="bonusChange($event)"></div>
             <p></p>
             <div> Total tries: {{recipeService.totalCount}}</div>
             <div> Recipes found: {{recipeService.hitCount}}</div>
+            <!-- @TODO Add appropriate warning and check-->
+            <span *ngIf="recipeService.ingredCount == recipeService.ingredCount" style="color: red;"> Too many must-have
+                ingredients for the cauldron!
+            </span>
             <table *ngFor="let j of recipeService.indexer; let i = index">
                 Ingredient {{i + 1}} remaining checks: {{j+1}}
             </table>
         </div>
         <div class="rightPanel" *ngIf="!mainLoopService.started">
-            <div> 
-                <button (click)="filterRecipe()" class="{{ingredientsService.filter == true ? 'filtered' : ''}}">
-                Filter Recipe
+            <div>
+                <button (click)="filterRecipe()" class="{{sortingService.filter == true ? 'filtered' : ''}}">
+                    Filter Recipe
                 </button>
-                Add good: 
-                <button (click)="setTrait(senses.Taste)" class="{{recipeService.traits[senses.Taste] ? 'filtered' : ''}}">Taste</button>                
-                <button (click)="setTrait(senses.Touch)" class="{{recipeService.traits[senses.Touch] ? 'filtered' : ''}}">Touch</button>
-                <button (click)="setTrait(senses.Smell)" class="{{recipeService.traits[senses.Smell] ? 'filtered' : ''}}">Smell</button>
-                <button (click)="setTrait(senses.Sight)" class="{{recipeService.traits[senses.Sight] ? 'filtered' : ''}}">Sight</button>
-                <button (click)="setTrait(senses.Sound)" class="{{recipeService.traits[senses.Sound] ? 'filtered' : ''}}">Sound</button>
+                Add good:
+                <button (click)="setTrait(senses.Taste)"
+                    class="{{recipeService.traits[senses.Taste] ? 'filtered' : ''}}">Taste</button>
+                <button (click)="setTrait(senses.Touch)"
+                    class="{{recipeService.traits[senses.Touch] ? 'filtered' : ''}}">Touch</button>
+                <button (click)="setTrait(senses.Smell)"
+                    class="{{recipeService.traits[senses.Smell] ? 'filtered' : ''}}">Smell</button>
+                <button (click)="setTrait(senses.Sight)"
+                    class="{{recipeService.traits[senses.Sight] ? 'filtered' : ''}}">Sight</button>
+                <button (click)="setTrait(senses.Sound)"
+                    class="{{recipeService.traits[senses.Sound] ? 'filtered' : ''}}">Sound</button>
                 <span [matTooltipShowDelay]="200" matTooltip="Note that illusions don't count for orders."> Illusion:
-                <button (click)="setIllusion(senses.Taste)" class="{{recipeService.illusion == senses.Taste ? 'filtered' : ''}}">Taste</button>                
-                <button (click)="setIllusion(senses.Touch)" class="{{recipeService.illusion == senses.Touch ? 'filtered' : ''}}">Touch</button>
-                <button (click)="setIllusion(senses.Smell)" class="{{recipeService.illusion == senses.Smell ? 'filtered' : ''}}">Smell</button>
-                <button (click)="setIllusion(senses.Sight)" class="{{recipeService.illusion == senses.Sight ? 'filtered' : ''}}">Sight</button>
-                <button (click)="setIllusion(senses.Sound)" class="{{recipeService.illusion == senses.Sound ? 'filtered' : ''}}">Sound</button>
+                    <button (click)="setIllusion(senses.Taste)"
+                        class="{{recipeService.illusion == senses.Taste ? 'filtered' : ''}}">Taste</button>
+                    <button (click)="setIllusion(senses.Touch)"
+                        class="{{recipeService.illusion == senses.Touch ? 'filtered' : ''}}">Touch</button>
+                    <button (click)="setIllusion(senses.Smell)"
+                        class="{{recipeService.illusion == senses.Smell ? 'filtered' : ''}}">Smell</button>
+                    <button (click)="setIllusion(senses.Sight)"
+                        class="{{recipeService.illusion == senses.Sight ? 'filtered' : ''}}">Sight</button>
+                    <button (click)="setIllusion(senses.Sound)"
+                        class="{{recipeService.illusion == senses.Sound ? 'filtered' : ''}}">Sound</button>
                 </span>
             </div>
             <div>
-                Clear inventory: 
+                Clear inventory:
                 <button (click)="halveInventory()">Half</button>
                 <button (click)="selectRarityChange('9-Common')">Common</button>
                 <button (click)="selectRarityChange('4-Uncommon')">Uncommon</button>
                 <button (click)="selectRarityChange('2-Rare')">Rare</button>
-                <button (click)="selectRarityChange('1-Epic')">Epic</button>     
-                <button (click)="selectWeekChange(1)">Midweek 1+</button>         
-                <button (click)="selectWeekChange(2)">Week 2+</button>     
-                <button (click)="selectWeekChange(3)">Week 3+</button>     
-                <button (click)="selectWeekChange(4)">Week 4+</button>     
+                <button (click)="selectRarityChange('1-Epic')">Epic</button>
+                <button (click)="selectWeekChange(1)">Midweek 1+</button>
+                <button (click)="selectWeekChange(2)">Week 2+</button>
+                <button (click)="selectWeekChange(3)">Week 3+</button>
+                <button (click)="selectWeekChange(4)">Week 4+</button>
                 <button (click)="selectWeekChange(5)">Week 5</button>
             </div>
             Change all: <input type="number" min="0" max="999" (change)="allAvailChange($event)">
@@ -68,55 +85,93 @@
             <button (click)="dataService.saveData()">Save Settings</button>
             <button (click)="dataService.loadData()">Load Settings</button>
             <button (click)="dataService.clearData()">Clear Settings</button>
-            
-            Click header to sort
+
+            <span style="color: #337e40;"> Click header to sort</span>
             <table>
                 <tr>
-                    <td (click)="sortClick(1)">Name<mat-icon *ngIf="sortCheck(1,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(1,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(2)">A<mat-icon *ngIf="sortCheck(2,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(2,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(3)">B<mat-icon *ngIf="sortCheck(3,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(3,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(4)">C<mat-icon *ngIf="sortCheck(4,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(4,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(5)">D<mat-icon *ngIf="sortCheck(5,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(5,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(6)">E<mat-icon *ngIf="sortCheck(6,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(6,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(7)">Total<mat-icon *ngIf="sortCheck(7,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(7,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(8)">Cost<mat-icon *ngIf="sortCheck(8,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(8,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(9)">Taste<mat-icon *ngIf="sortCheck(9,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(9,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(10)">Touch<mat-icon *ngIf="sortCheck(10,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(10,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(11)">Smell<mat-icon *ngIf="sortCheck(11,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(11,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(12)">Sight<mat-icon *ngIf="sortCheck(12,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(12,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(13)">Sound<mat-icon *ngIf="sortCheck(13,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(13,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(14)">Rarity<mat-icon *ngIf="sortCheck(14,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(14,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(15)">Location<mat-icon *ngIf="sortCheck(15,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(15,true)">keyboard_arrow_down</mat-icon></td>
-                    <td (click)="sortClick(16)">Type<mat-icon *ngIf="sortCheck(16,false)">keyboard_arrow_up</mat-icon><mat-icon *ngIf="sortCheck(16,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(1)">Name<mat-icon
+                            *ngIf="sortCheck(1,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(1,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(2)">A<mat-icon
+                            *ngIf="sortCheck(2,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(2,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(3)">B<mat-icon
+                            *ngIf="sortCheck(3,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(3,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(4)">C<mat-icon
+                            *ngIf="sortCheck(4,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(4,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(5)">D<mat-icon
+                            *ngIf="sortCheck(5,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(5,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(6)">E<mat-icon
+                            *ngIf="sortCheck(6,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(6,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(7)">Total<mat-icon
+                            *ngIf="sortCheck(7,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(7,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(8)">Cost<mat-icon
+                            *ngIf="sortCheck(8,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(8,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(9)">Taste<mat-icon
+                            *ngIf="sortCheck(9,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(9,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(10)">Touch<mat-icon
+                            *ngIf="sortCheck(10,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(10,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(11)">Smell<mat-icon
+                            *ngIf="sortCheck(11,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(11,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(12)">Sight<mat-icon
+                            *ngIf="sortCheck(12,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(12,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(13)">Sound<mat-icon
+                            *ngIf="sortCheck(13,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(13,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(14)">Rarity<mat-icon
+                            *ngIf="sortCheck(14,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(14,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(15)">Location<mat-icon
+                            *ngIf="sortCheck(15,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(15,true)">keyboard_arrow_down</mat-icon></td>
+                    <td (click)="sortClick(16)">Type<mat-icon
+                            *ngIf="sortCheck(16,false)">keyboard_arrow_up</mat-icon><mat-icon
+                            *ngIf="sortCheck(16,true)">keyboard_arrow_down</mat-icon></td>
                     <td>Inventory</td>
                     <td>Must-haves</td>
                 </tr>
-                <ng-container *ngFor="let ingredient of ingredientsService.ingredients; let i = index">
-                    <tr [ngClass]="ingredCheck(ingredient.index)" >
-                        <td>{{ingredient.name}}</td>
-                        <td>{{ingredient.A}}</td>
-                        <td>{{ingredient.B}}</td>
-                        <td>{{ingredient.C}}</td>
-                        <td>{{ingredient.D}}</td>
-                        <td>{{ingredient.E}}</td>
-                        <td>{{ingredient.Total}}</td>
-                        <td>{{ingredient.cost}}</td>
-                        <td>{{ingredient.Taste}}</td>
-                        <td>{{ingredient.Touch}}</td>
-                        <td>{{ingredient.Smell}}</td>
-                        <td>{{ingredient.Sight}}</td>
-                        <td>{{ingredient.Sound}}</td>
-                        <td>{{ingredient.Rarity}}</td>
-                        <td>{{ingredient.Location}}</td>
-                        <td>{{ingredient.Type}}</td>
+                <ng-container *ngFor="let ingredient of sortingService.sortedList">
+                    <tr [ngClass]="ingredCheck(ingredient)">
+                        <td>{{ingredient}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].A}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].B}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].C}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].D}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].E}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Total}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].cost}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Taste}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Touch}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Smell}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Sight}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Sound}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Rarity}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Location}}</td>
+                        <td>{{ingredientsService.ingredients[ingredient].Type}}</td>
                         <td><input type="number" min="0" max="999"
-                                value="{{ingredient.Avail}}" (change)="ingredAvailChange($event, i)">
+                                value="{{ingredientsService.ingredientAvailability[ingredient]}}"
+                                (change)="ingredAvailChange($event, ingredient)">
                         </td>
                         <td><input type="number" min="0" max="14"
-                                value="{{ingredient.Avail}}" (change)="mustHaveChange($event, i)">
+                                value="{{ingredientsService.ingredientAvailability[ingredient]}}"
+                                (change)="mustHaveChange($event, ingredient)">
                         </td>
                         <!-- @TODO add must haves and related warning-->
-                        <td *ngIf="ingredient.Avail <= ingredient.Avail"> <span style="color: red;"> I'm red! </span></td>
+                        <td
+                            *ngIf="ingredientsService.ingredientAvailability[ingredient] <= ingredientsService.ingredientAvailability[ingredient]">
+                            <span style="color: red;"> Not enough inventory!
+                            </span>
+                        </td>
                     </tr>
                 </ng-container>
             </table>
@@ -124,37 +179,44 @@
     </div>
     <div class="panelContainer">
         <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
-            <table>
-                <span *ngIf="mainLoopService.started">Simulation running, pause and wait for current results to sort...</span>
-                <ng-container *ngIf="!mainLoopService.started">
-                    Results below. Shows top 1000 sorted descending by <select (change)="RecipeSortUpdate($event)">
-                        <option *ngFor="let recipe of recipeSort" value="{{recipe}}"
+
+            <span *ngIf="mainLoopService.started">Simulation running, pause and wait for current results to
+                sort...</span>
+            <ng-container *ngIf="!mainLoopService.started">
+                Results below. Shows top 1000 sorted descending by <select (change)="RecipeSortUpdate($event)">
+                    <option *ngFor="let recipe of recipeSort" value="{{recipe}}"
                         [selected]="recipe === recipeService.selectedSort">{{recipe}}</option>
-                    </select>.
+                </select>.
+                <table style="width: 100%-10px;">
                     <tr *ngIf="recipeService.recipeListDisplay.length >= 1" text-align="center">
-                        <td>Name</td>
+                        <td>Ingredients</td>
+                        <ng-container *ngFor="let recipe of ingredientCountDisplay; let i = index;">
+                            <td></td>
+                        </ng-container>
                         <td>Cost</td>
                         <td>Rank</td>
                         <td>Value</td>
                         <td>Ratio</td>
                         <td>Profit</td>
-                        <td>Total</td>
+                        <td>Magamin</td>
                         <td>Deviation</td>
                     </tr>
                     <ng-container *ngFor="let recipe of recipeService.recipeListDisplay; let i = index;">
-                        <tr *ngIf="i < recipeService.recipeListDisplay.length">
-                            <td>{{i + 1}}: {{recipe.name}}</td>
+                        <tr style="text-align: center;" *ngIf="i < recipeService.recipeListDisplay.length">
+                            <ng-container *ngFor="let name of recipe.ingredients; let i = index;">
+                                <td style="padding: 2px; border: 1px solid black;">{{recipe.ingredients[i]}}</td>
+                            </ng-container>
                             <td>{{recipe.cost}}</td>
                             <td>{{recipe.rank.rank}}</td>
                             <td>{{recipe.value}}*{{recipeService.potionCount()}}</td>
                             <td>{{recipeRatio(i)}}</td>
                             <td>{{recipe.value * recipeService.potionCount() - recipe.cost}}</td>
                             <td>{{recipe.Total}}</td>
-                            <td>{{recipe.deviation*100}}%</td>
+                            <td>{{round(recipe.deviation*100)}}%</td>
                         </tr>
                     </ng-container>
-                </ng-container>
-            </table>
+                </table>
+            </ng-container>
         </cdk-virtual-scroll-viewport>
     </div>
 </div>
