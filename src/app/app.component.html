@@ -180,8 +180,8 @@
     <div class="panelContainer">
         <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
 
-            <span *ngIf="mainLoopService.started">Simulation running, pause and wait for current results to
-                sort...</span>
+            <div style="text-align: center;" *ngIf="mainLoopService.started"><span>Simulation running, pause and wait for current results to
+                sort...</span> <p>{{recipeService.statusMessage}}</p></div>
             <ng-container *ngIf="!mainLoopService.started">
                 Results below. Shows top 1000 sorted descending by <select (change)="RecipeSortUpdate($event)">
                     <option *ngFor="let recipe of recipeSort" value="{{recipe}}"

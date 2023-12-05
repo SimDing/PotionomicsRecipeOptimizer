@@ -14,8 +14,6 @@ export enum Senses {
 }
 
 export enum RecipeSort {
-  Cost,
-  Rank,
   Value,
   Ratio,
   Profit
@@ -40,7 +38,6 @@ export class RecipeService {
   private percE = 0 / 100;
   private topDeviate = 0 + 0.0025; // Perfect: 0 Very: 0.05 Stable: 0.15 Unstable 0.25 | allowance 0.25%
   private tempAvail: Record<string, number> = {}; // Holds the available ingredients for the working recipe.
-  private slotIndex = 0; // only locally used for the recursive method. I can't be completely sure of my work.
   private rankRepo = new RankRepo;
   private recipeList: Recipe[] = [];
 
@@ -53,8 +50,6 @@ export class RecipeService {
   };
   selectedSort = "Profit";
   recipeSorts: Record<string, number> = {
-    "Cost": RecipeSort.Cost,
-    "Rank": RecipeSort.Rank,
     "Value": RecipeSort.Value,
     "Ratio": RecipeSort.Ratio,
     "Profit": RecipeSort.Profit,
@@ -71,6 +66,7 @@ export class RecipeService {
   ingredCount = 8;
   ingredSelection = 8;
   shopBonus = 0;
+  statusMessage = "I'm empty, fill me!"; // @TODO implement status of heuristics "Running popularity Heuristics " or "4x" etc
 
   constructor(
     public mainLoopService: MainLoopService,
@@ -103,7 +99,6 @@ export class RecipeService {
     this.recipeList = [];
     this.totalCount = 0;
     this.hitCount = 0;
-    this.slotIndex = 0;
   }
 
 
@@ -124,12 +119,6 @@ export class RecipeService {
   /** Sorts the results of the sim prior to display according to selection saved in selectedSort member */
   recipeSort() {
     switch (this.selectedSort) {
-      case "Cost":
-        this.recipeList.sort((b, a) => a.cost - b.cost);
-        break;
-      case "Rank":
-        this.recipeList.sort((b, a) => a.rank.mult - b.rank.mult);
-        break;
       case "Value":
         this.recipeList.sort((b, a) => a.value - b.value);
         break;
@@ -142,12 +131,13 @@ export class RecipeService {
     }
   }
 
-  /** Displays the recipes from index start to start + length.
+  /** Displays the recipes from index start to start + length - 1.
    * @param size The length of the display, default 1000
    * @param start The starting index, default 0
    */
-  recipeDisplay(length = 1000, start = 0) {
+  recipeDisplay(length = 100, start = 0) {
     this.recipeListDisplay = this.recipeList.slice(start, length);
+    this.recipeList.splice
   }
 
   /** Updates the recipe rank and value by comparing the rank repo with the total magamin count.
@@ -258,59 +248,48 @@ export class RecipeService {
   }
 
   /** Controls the flow of the recipe search */
-  discoverNewRecipe(recipe: Recipe | undefined) {
-    if (recipe === undefined) {
-      return;
-    }
+  discoverNewRecipe(recipe: Recipe) {
+    while (recipe.ingredients.length < this.ingredCount) {
 
-    // Combine a new ingredient into the recipe
-    recipe = this.updateRecipe(recipe);
+      // Combine a new ingredient into the recipe
+      recipe = this.updateRecipe(recipe);
 
-    // @TODO need to improve architecture and detach indices.
-    // Check if the current ingredient slot returned nothing
-    if (recipe === undefined) {
-      if (this.slotIndex <= 0) { // If the first slot returns nothing then we're done.
-        this.mainLoopService.started = false;
-        this.recipeSort();
-        this.recipeDisplay();
+      // Check if the current ingredient slot returned nothing
+      if (recipe.deviation === 99) {
+        if (this.indexer[0] < 0) { // If the first slot returns nothing then we're done.
+          this.mainLoopService.started = false;
+          this.recipeSort();
+          this.recipeDisplay();
+          return;
+        }
+        this.indexer[recipe.ingredients.length - 1]--; // reduce the index of this slot and fill the indices of later slots.
+        for (let j = recipe.ingredients.length; j < this.ingredCount; j++) {
+          this.indexer[j] = this.indexer[recipe.ingredients.length - 1];
+        }
+        // Cleaned out a slot, return to top. 
+        // @TODO Alternatively, clear the recipe and check through bottom 2 index per run. This runs at 10s of thousands per tick, it can handle doing two rows at a time.
         return;
       }
-      this.indexer[this.slotIndex - 1]--; // reduce the index of this slot and fill the indices of later slots.
-      for (let j = this.slotIndex; j < this.ingredCount; j++) {
-        this.indexer[j] = this.indexer[this.slotIndex - 1];
-      }
-      // Cleaned out a slot, return to top.
-      this.slotIndex = 0;
-      return;
-    }
-
-    // Check if we've reached the final slot
-    if (recipe.ingredients.length < this.ingredCount) {
-      // @TODO improve recursion with local indices and remove global member.
-      // Recursively move to the next slot. Good for dynamic depth.
-      this.slotIndex++;
-      this.discoverNewRecipe(recipe);
-    } else {
-      this.indexer[this.slotIndex]--;
-      this.finalizeRecipe(recipe);
     }
     // If we're here then we're coming up for air to check frame time and for a new round.
-    this.slotIndex = 0;
+    this.indexer[recipe.ingredients.length - 1]--;
+    this.finalizeRecipe(recipe);
+
   }
 
   /** Joins ingredients to form a recipe.
    * @returns object with deviation and pos (index) of the ingredient, or undefined and -1 if none fit.
    * @param recipe the empty or partially built recipe needing a new ingredient.
    * @param pos the current position of the slot currently being worked, moves in reverse.
-   * @TODO create params for one time or short use recursion variables.
    * @TODO allow for division heuristics
    * @TODO allow for required ingredient (something like an Avail reduction and starter recipe and higher slotIndex before calling discover. Watch out for the indexer sweeper tho)
   */
-  findIngredient(recipe: Recipe, pos: number): { deviation: number | undefined; pos: number; } {
-    let deviation; // Going to need to check for recipe deviation.
+  findIngredient(recipe: Recipe, pos: number): { finalDeviation: number; pos: number; } {
+    let finalDeviation = 99; // Let 99 be code for nothing found.
+    let deviation;
 
     while (pos >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
-      
+
       if (!(this.tempAvail[this.ingredientList[pos]] > 0)) { // Ignore ingredients that have no availability count left
         pos--;
         continue;
@@ -323,14 +302,17 @@ export class RecipeService {
       const E = ingredient.E;
       const Total = ingredient.Total;
 
+
       // If the final ingredient is added, change from max magamin to the totals in the recipe and get updated ratios.
-      if (this.slotIndex < this.ingredCount - 1) {
+      if (recipe.ingredients.length < this.ingredCount - 1) {
         deviation =
           Math.max(((recipe.A + A) / this.maxMagamin) - this.percA, 0) +
           Math.max(((recipe.B + B) / this.maxMagamin) - this.percB, 0) +
           Math.max(((recipe.C + C) / this.maxMagamin) - this.percC, 0) +
           Math.max(((recipe.D + D) / this.maxMagamin) - this.percD, 0) +
           Math.max(((recipe.E + E) / this.maxMagamin) - this.percE, 0);
+      } else if (recipe.ingredients.length > this.ingredCount - 1) {
+        throw new Error("Ingredient count overflow");
       } else {
         if (
           (this.traits[Senses.Taste] && recipe.Taste < 5 && ingredient.Taste < 5) ||
@@ -355,22 +337,23 @@ export class RecipeService {
       // Skip deviant ingredients and ingredients that go over magamin count. The lowest total magamin is 4 
       // so this will also remove earlier ingredients that go over by assuming all the later ingredients total 4.
       if (deviation > this.topDeviate ||
-        ((this.ingredCount - 1 - this.slotIndex) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)
+        ((this.ingredCount - 1 - recipe.ingredients.length) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)
       ) {
         pos--;
       } else {
+        finalDeviation = deviation;
         break;
       }
     }
 
-    return { deviation, pos };
+    return { finalDeviation, pos };
   }
 
   /** Adds an ingredient to the recipe */
   addIngredient(recipe: Recipe, ingredientName: string): Recipe {
     const ingredient = this.ingredientsService.ingredients[ingredientName]
-    
-    recipe.ingredients[this.slotIndex] = ingredientName;
+
+    recipe.ingredients.push(ingredientName); // recipe.ingredients.length == slotIndex prior to this, slotIndex + 1 after.
     recipe.A += ingredient.A;
     recipe.B += ingredient.B;
     recipe.C += ingredient.C;
@@ -388,19 +371,23 @@ export class RecipeService {
     return recipe;
   }
 
-  updateRecipe(recipe: Recipe): Recipe | undefined {
-    
-    const pos = this.indexer[this.slotIndex]
+  updateRecipe(recipe: Recipe): Recipe {
+    const slotIndex = recipe.ingredients.length
+
+    const pos = this.indexer[slotIndex]
     const result = this.findIngredient(recipe, pos);
-    this.indexer[this.slotIndex] = result.pos;
-    if (result.deviation === undefined || result.pos < 0) {
-      return;
+    this.updateIndexer(slotIndex, result.pos)
+    recipe.deviation = result.finalDeviation;
+    if (result.pos < 0) {
+      return recipe;
     }
-    recipe.deviation = result.deviation;
 
     const ingredientName = this.ingredientList[result.pos];
-    return this.addIngredient(recipe, ingredientName);
+    return this.addIngredient(recipe, ingredientName); // recipe.ingredients.length == slotIndex prior to this.
+  }
 
+  updateIndexer(slotIndex: number, pos: number) {
+    this.indexer[slotIndex] = pos;
   }
 
   /** Finalizes a valid recipe by applying illusion, ranking, and pushing to the recipe list.
