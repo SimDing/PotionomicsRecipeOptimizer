@@ -68,14 +68,12 @@ export class AppComponent implements OnInit {
     this.recipeService.recipeSort();
     this.recipeService.recipeDisplay();
     this.recipeService.ingredCount = this.recipeService.ingredSelection;
-    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
+    this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 }); // -1 because the first is a header.
   }
 
   /** Resets the combination sim. */
   resetClick() {
-    this.recipeService.updateFormula();
-    this.recipeService.indexerInit();
-    this.recipeService.searchInit();
+    this.recipeService.reset();
   }
 
   
@@ -163,7 +161,8 @@ export class AppComponent implements OnInit {
   mustHaveChange(event: Event, name: string) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 14), 0);
-    this.ingredientsService.ingredientAvailability[name] = numCheck;
+    this.ingredientsService.ingredientMustHaves[name] = numCheck;
+    this.recipeService.updateMustHaves();
     this.resetClick();
   }
 

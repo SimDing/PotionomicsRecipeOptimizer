@@ -1,7 +1,7 @@
 <div class="wrapper">
     <div class="panelContainer">
         <div class="leftPanel">
-            <button *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
+            <button [disabled]="recipeService.mustHaveArray.length >= recipeService.ingredSelection" *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
@@ -31,7 +31,7 @@
             <div> Total tries: {{recipeService.totalCount}}</div>
             <div> Recipes found: {{recipeService.hitCount}}</div>
             <!-- @TODO Add appropriate warning and check-->
-            <span *ngIf="recipeService.ingredCount == recipeService.ingredCount" style="color: red;"> Too many must-have
+            <span *ngIf="recipeService.mustHaveArray.length >= recipeService.ingredSelection" style="color: red;"> Too many must-have
                 ingredients for the cauldron!
             </span>
             <table *ngFor="let j of recipeService.indexer; let i = index">
@@ -163,12 +163,12 @@
                                 (change)="ingredAvailChange($event, ingredient)">
                         </td>
                         <td><input type="number" min="0" max="14"
-                                value="{{ingredientsService.ingredientAvailability[ingredient]}}"
+                                value="{{ingredientsService.ingredientMustHaves[ingredient]}}"
                                 (change)="mustHaveChange($event, ingredient)">
                         </td>
                         <!-- @TODO add must haves and related warning-->
                         <td
-                            *ngIf="ingredientsService.ingredientAvailability[ingredient] <= ingredientsService.ingredientAvailability[ingredient]">
+                            *ngIf="ingredientsService.ingredientAvailability[ingredient] < ingredientsService.ingredientMustHaves[ingredient]">
                             <span style="color: red;"> Not enough inventory!
                             </span>
                         </td>

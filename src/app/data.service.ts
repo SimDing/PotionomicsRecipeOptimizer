@@ -91,8 +91,8 @@ export class DataService {
       this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
       this.recipeService.selectedSort = data.selectedSort || "Profit";
       this.recipeService.maxMagamin = data.target || 375;
-      this.recipeService.ingredSelection = data.ingredSelection || 8;
-      this.recipeService.ingredCount = data.ingredSelection || 8;
+      this.recipeService.ingredSelection = data.ingredSelection || 9;
+      this.recipeService.ingredCount = data.ingredSelection || 9;
       this.recipeService.traits = data.traits || [false, false, false, false, false];
       this.recipeService.illusion = data.illusion || 0;
       this.recipeService.shopBonus = data.shopBonus || 0;

@@ -74,6 +74,7 @@ export class IngredientsService {
   ingredientNames: string[] = []
   ingredients: Record<string,IngredientStats> = {}
   ingredientAvailability: Record<string, number> = {} // Number of this ingredient user has for potionmaking.
+  ingredientMustHaves: Record<string, number> = {} // Number of this ingredient user must have included in the recipe.
 
   formulas: Formula[] = [
     {
@@ -287,6 +288,7 @@ export class IngredientsService {
     this.ingredientNames = Object.keys(this.ingredients)
     for (const ingredient of this.ingredientNames) {
       this.ingredientAvailability[ingredient] = 0;
+      this.ingredientMustHaves[ingredient] = 0;
     }
   }
 

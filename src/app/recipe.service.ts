@@ -63,9 +63,11 @@ export class RecipeService {
   illusion = 0; // For display and selection
   selectedFormula = 0;
   maxMagamin = 375;
-  ingredCount = 8;
-  ingredSelection = 8;
+  ingredCount = 9;
+  ingredSelection = 9;
   shopBonus = 0;
+  mustHaveArray: string[] = []
+
   statusMessage = "I'm empty, fill me!"; // @TODO implement status of heuristics "Running popularity Heuristics " or "4x" etc
 
   constructor(
@@ -80,16 +82,10 @@ export class RecipeService {
 
   // INIT
 
-  /** Initializes a recipe search loop. */
-  discoverInit() {
-    this.tempAvail = { ...this.ingredientsService.ingredientAvailability }
-    this.discoverNewRecipe(this.initRecipe());
-  }
-
   /** Initializes the working index of the search algorithms. */
   indexerInit() {
     this.indexer = [];
-    for (let i = 0; i < this.ingredSelection; i++) {
+    for (let i = 0; i < this.ingredSelection - this.mustHaveArray.length; i++) {
       this.indexer.push(this.ingredientList.length - 1);
     }
   }
@@ -99,6 +95,18 @@ export class RecipeService {
     this.recipeList = [];
     this.totalCount = 0;
     this.hitCount = 0;
+  }
+
+  /** Initializes a recipe search loop. */
+  discoverInit() {
+    this.tempAvail = { ...this.ingredientsService.ingredientAvailability }
+    this.discoverNewRecipe(this.initRecipe());
+  }
+
+  reset() {
+    this.updateFormula();
+    this.searchInit();
+    this.indexerInit();
   }
 
 
@@ -113,7 +121,16 @@ export class RecipeService {
     this.percE = this.ingredientsService.formulas[this.selectedFormula].E;
     this.topDeviate = this.qualities[this.selectedQuality] + 0.0025;
     this.buildIngredients();
-    this.searchInit();
+  }
+
+  updateMustHaves() {
+    const tempArray: string[] = []
+    this.ingredientsService.ingredientNames.forEach(element => {
+      for (let i = 0; i < this.ingredientsService.ingredientMustHaves[element]; i++) {
+        tempArray.push(element)
+      }
+    });
+    this.mustHaveArray = [...tempArray]
   }
 
   /** Sorts the results of the sim prior to display according to selection saved in selectedSort member */
@@ -179,7 +196,7 @@ export class RecipeService {
 
   /** Macro method to create a new blank recipe */
   initRecipe(): Recipe {
-    const result = {
+    const recipe = {
       A: 0,
       B: 0,
       C: 0,
@@ -200,7 +217,10 @@ export class RecipeService {
       value: 0,
       deviation: 0,
     }
-    return result;
+    this.mustHaveArray.forEach(element => {
+      this.addIngredient(recipe, element)
+    });
+    return recipe;
   }
 
   /** Builds the viable ingredients list for the active recipe.  
@@ -262,9 +282,9 @@ export class RecipeService {
           this.recipeDisplay();
           return;
         }
-        this.indexer[recipe.ingredients.length - 1]--; // reduce the index of this slot and fill the indices of later slots.
+        this.indexer[recipe.ingredients.length - 1 - this.mustHaveArray.length]--; // reduce the index of this slot and fill the indices of later slots.
         for (let j = recipe.ingredients.length; j < this.ingredCount; j++) {
-          this.indexer[j] = this.indexer[recipe.ingredients.length - 1];
+          this.indexer[j - this.mustHaveArray.length] = this.indexer[recipe.ingredients.length - 1 - this.mustHaveArray.length];
         }
         // Cleaned out a slot, return to top. 
         // @TODO Alternatively, clear the recipe and check through bottom 2 index per run. This runs at 10s of thousands per tick, it can handle doing two rows at a time.
@@ -272,7 +292,7 @@ export class RecipeService {
       }
     }
     // If we're here then we're coming up for air to check frame time and for a new round.
-    this.indexer[recipe.ingredients.length - 1]--;
+    this.indexer[recipe.ingredients.length - 1 - this.mustHaveArray.length]--;
     this.finalizeRecipe(recipe);
 
   }
@@ -372,11 +392,11 @@ export class RecipeService {
   }
 
   updateRecipe(recipe: Recipe): Recipe {
-    const slotIndex = recipe.ingredients.length
+    const slotIndex = recipe.ingredients.length - this.mustHaveArray.length
 
     const pos = this.indexer[slotIndex]
     const result = this.findIngredient(recipe, pos);
-    this.updateIndexer(slotIndex, result.pos)
+    this.indexer[slotIndex] = result.pos;
     recipe.deviation = result.finalDeviation;
     if (result.pos < 0) {
       return recipe;
@@ -384,10 +404,6 @@ export class RecipeService {
 
     const ingredientName = this.ingredientList[result.pos];
     return this.addIngredient(recipe, ingredientName); // recipe.ingredients.length == slotIndex prior to this.
-  }
-
-  updateIndexer(slotIndex: number, pos: number) {
-    this.indexer[slotIndex] = pos;
   }
 
   /** Finalizes a valid recipe by applying illusion, ranking, and pushing to the recipe list.
