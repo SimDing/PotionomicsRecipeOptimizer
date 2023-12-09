@@ -18,6 +18,7 @@ export class AppComponent implements OnInit {
   senses = Senses;
   ingredientCountDisplay = []; // Used to extend the recipe results table based on ingredient count
   qualitySelection: string[] = []
+  heuristicSelection: number[] = []
   recipeSort: string[] = []
 
   constructor(
@@ -156,7 +157,6 @@ export class AppComponent implements OnInit {
   }
 
   /** Updates a specific ingredient's must-have number. 
-   * @TODO Implement
   */
   mustHaveChange(event: Event, name: string) {
     if (!(event.target instanceof HTMLInputElement)) return;
@@ -224,5 +224,14 @@ export class AppComponent implements OnInit {
   /** Display helper function, rounds to two decimals */
   round(i: number) {
     return Math.round(i*100)/100
+  }
+
+  /** @TODO Heuristics something somethng */
+  heuristicChoices(){
+    this.heuristicSelection = []
+    const ingreds = this.recipeService.ingredSelection - this.recipeService.mustHaveArray.length;
+    for (let i = 2; i * 2 <= ingreds; i++){
+      if ( ingreds % i == 0) this.heuristicSelection.push(i)
+    }
   }
 }

@@ -30,10 +30,12 @@
             <p></p>
             <div> Total tries: {{recipeService.totalCount}}</div>
             <div> Recipes found: {{recipeService.hitCount}}</div>
-            <!-- @TODO Add appropriate warning and check-->
             <span *ngIf="recipeService.mustHaveArray.length >= recipeService.ingredSelection" style="color: red;"> Too many must-have
                 ingredients for the cauldron!
             </span>
+            <table *ngFor="let j of recipeService.heuristicIndexer; let i = index">
+                Heuristic {{i + 1}} remaining checks: {{j.index+1}}
+            </table>
             <table *ngFor="let j of recipeService.indexer; let i = index">
                 Ingredient {{i + 1}} remaining checks: {{j+1}}
             </table>
@@ -166,7 +168,6 @@
                                 value="{{ingredientsService.ingredientMustHaves[ingredient]}}"
                                 (change)="mustHaveChange($event, ingredient)">
                         </td>
-                        <!-- @TODO add must haves and related warning-->
                         <td
                             *ngIf="ingredientsService.ingredientAvailability[ingredient] < ingredientsService.ingredientMustHaves[ingredient]">
                             <span style="color: red;"> Not enough inventory!
@@ -181,9 +182,9 @@
         <cdk-virtual-scroll-viewport itemSize="14px" class="bottomPanel" maxBufferPx="800">
 
             <div style="text-align: center;" *ngIf="mainLoopService.started"><span>Simulation running, pause and wait for current results to
-                sort...</span> <p>{{recipeService.statusMessage}}</p></div>
+                sort...</span> </div>
             <ng-container *ngIf="!mainLoopService.started">
-                Results below. Shows top 1000 sorted descending by <select (change)="RecipeSortUpdate($event)">
+                Results below. Shows top 100 sorted descending by <select (change)="RecipeSortUpdate($event)">
                     <option *ngFor="let recipe of recipeSort" value="{{recipe}}"
                         [selected]="recipe === recipeService.selectedSort">{{recipe}}</option>
                 </select>.

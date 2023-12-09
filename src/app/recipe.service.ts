@@ -40,6 +40,8 @@ export class RecipeService {
   private tempAvail: Record<string, number> = {}; // Holds the available ingredients for the working recipe.
   private rankRepo = new RankRepo;
   private recipeList: Recipe[] = [];
+  private heuristicsList: Recipe[] = [];
+  private heuristicsComplete = false;
 
   selectedQuality = "Perfect";
   qualities: Record<string, number> = {
@@ -56,7 +58,8 @@ export class RecipeService {
   };
   recipeListDisplay: Recipe[] = []; // Used to display 1000 results on frontend.
   ingredientList: string[] = []; // Used for display style changes
-  indexer: number[] = []; // Used in display
+  indexer: number[] = []; // Used in display and tracking
+  heuristicIndexer: { index: number, size: number }[] = []; // Used in display and tracking
   totalCount = 0; // For display
   hitCount = 0; // For display
   traits = [false, false, false, false, false]; // For display and selection
@@ -66,6 +69,8 @@ export class RecipeService {
   ingredCount = 9;
   ingredSelection = 9;
   shopBonus = 0;
+  heuristicsDefault = false;
+  heuristicSize = 3;
   mustHaveArray: string[] = []
 
   statusMessage = "I'm empty, fill me!"; // @TODO implement status of heuristics "Running popularity Heuristics " or "4x" etc
@@ -82,37 +87,13 @@ export class RecipeService {
 
   // INIT
 
-  /** Initializes the working index of the search algorithms. */
-  indexerInit() {
-    this.indexer = [];
-    for (let i = 0; i < this.ingredSelection - this.mustHaveArray.length; i++) {
-      this.indexer.push(this.ingredientList.length - 1);
-    }
-  }
-
-  /** Initializes the search list. */
-  searchInit() {
-    this.recipeList = [];
-    this.totalCount = 0;
-    this.hitCount = 0;
-  }
-
   /** Initializes a recipe search loop. */
   discoverInit() {
     this.tempAvail = { ...this.ingredientsService.ingredientAvailability }
-    this.discoverNewRecipe(this.initRecipe());
+    this.heuristicsComplete ? this.discoverNewRecipe(this.initRecipe()) : this.heuristicFlow(this.initRecipe()); // Entry point
   }
 
-  reset() {
-    this.updateFormula();
-    this.searchInit();
-    this.indexerInit();
-  }
-
-
-  // UTILITY
-
-  /** Updates the formula ratios. */
+  /** Updates the formula ratios and rebuilds the viable ingredients list*/
   updateFormula() {
     this.percA = this.ingredientsService.formulas[this.selectedFormula].A;
     this.percB = this.ingredientsService.formulas[this.selectedFormula].B;
@@ -123,17 +104,93 @@ export class RecipeService {
     this.buildIngredients();
   }
 
-  updateMustHaves() {
-    const tempArray: string[] = []
-    this.ingredientsService.ingredientNames.forEach(element => {
-      for (let i = 0; i < this.ingredientsService.ingredientMustHaves[element]; i++) {
-        tempArray.push(element)
+  /** Builds the viable ingredients list for the active recipe. */
+  buildIngredients() {
+    let deviation = 0; // Init the deviation variable
+    this.ingredientList = [...this.ingredientsService.ingredientNames]; // Shallow copy the names array 
+    let i = this.ingredientList.length;
+    const validA = this.percA > 0;
+    const validB = this.percB > 0;
+    const validC = this.percC > 0;
+    const validD = this.percD > 0;
+    const validE = this.percE > 0;
+
+    // Sort and Filter out unwanted materials
+    this.ingredientList.sort((a, b) => this.ingredientsService.ingredients[a].Total - this.ingredientsService.ingredients[b].Total);
+    while (i > 0) {
+      i--;
+      const ingredient = this.ingredientsService.ingredients[this.ingredientList[i]]
+      deviation = // Measure if an ingredient goes over the maximum viable for the target
+        Math.max((ingredient.A / this.maxMagamin) - this.percA, 0) +
+        Math.max((ingredient.B / this.maxMagamin) - this.percB, 0) +
+        Math.max((ingredient.C / this.maxMagamin) - this.percC, 0) +
+        Math.max((ingredient.D / this.maxMagamin) - this.percD, 0) +
+        Math.max((ingredient.E / this.maxMagamin) - this.percE, 0);
+
+      if (deviation > this.topDeviate || // Remove ingredients that don't match filters and deviate too far.
+        this.ingredientsService.ingredientAvailability[this.ingredientList[i]] == 0 || // and are empty
+        (ingredient.Taste < 0 && this.traits[Senses.Taste]) ||
+        (ingredient.Touch < 0 && this.traits[Senses.Touch]) ||
+        (ingredient.Smell < 0 && this.traits[Senses.Smell]) ||
+        (ingredient.Sight < 0 && this.traits[Senses.Sight]) ||
+        (ingredient.Sound < 0 && this.traits[Senses.Sound]) ||
+        !(((ingredient.A > 0) == validA && validA) || // This section checks to see if the ingredient has anything of value to add.  
+          ((ingredient.B > 0) == validB && validB) || // No point adding an ingredient that is below deviation but has no value.
+          ((ingredient.C > 0) == validC && validC) ||
+          ((ingredient.D > 0) == validD && validD) ||
+          ((ingredient.E > 0) == validE && validE))
+      ) {
+        this.ingredientList.splice(i, 1); // Cut the fat.
       }
-    });
-    this.mustHaveArray = [...tempArray]
+    }
+    this.indexerInit(); // Initialize the index based on this new ingredient list.
   }
 
-  /** Sorts the results of the sim prior to display according to selection saved in selectedSort member */
+  /** Initializes the working index of the search algorithms. 
+   * @param indexerLength The number of slots to index, default ingredSelection - mustHaveArray.length
+  */
+  indexerInit(indexerLength = this.ingredSelection - this.mustHaveArray.length) {
+    this.indexer = [];
+    this.heuristicIndexer = [];
+    for (let i = 0; i < indexerLength; i++) {
+      this.indexer.push(this.ingredientList.length - 1);
+    }
+    for (let i = 0; i < this.heuristicSize; i++) {
+      const sizeadd = i < (this.ingredSelection - this.mustHaveArray.length) % 3 ? 1 : 0;
+      this.heuristicIndexer.push({ index: this.ingredientList.length - 1, size: this.heuristicCount() + sizeadd });
+    }
+  }
+
+  /** Initializes the search list. */
+  searchInit() {
+    this.heuristicsComplete = this.heuristicsDefault;
+    this.recipeList = [];
+    this.totalCount = 0;
+    this.hitCount = 0;
+  }
+
+  /** Updates the formula and the viable ingredients, resets the counts, recipe list, and heuristics boolean, then sets up the indexer in heuristics mode */
+  reset() {
+    this.updateFormula();
+    this.searchInit();
+  }
+
+
+  // UTILITY
+
+  /** Updates teh must have ingredients array */
+  updateMustHaves() {
+    this.mustHaveArray = []
+    this.ingredientsService.ingredientNames.forEach(element => {
+      for (let i = 0; i < this.ingredientsService.ingredientMustHaves[element]; i++) {
+        this.mustHaveArray.push(element)
+      }
+    });
+  }
+
+  /** Sorts the results of the sim prior to display according to selection saved in selectedSort member 
+   * @TODO make the recipe sorting more efficient, individual insertions and pre-sorted categorical subsets
+  */
   recipeSort() {
     switch (this.selectedSort) {
       case "Value":
@@ -186,14 +243,6 @@ export class RecipeService {
     }
   }
 
-  /** A macro method to remember potions multiply based on ingredient count */
-  potionCount() {
-    return Math.floor(this.ingredCount / 2);
-  }
-
-
-  // MAIN FLOW
-
   /** Macro method to create a new blank recipe */
   initRecipe(): Recipe {
     const recipe = {
@@ -223,53 +272,117 @@ export class RecipeService {
     return recipe;
   }
 
-  /** Builds the viable ingredients list for the active recipe.  
-   * @param arr the list of ingredients to consider. defaults to ingredients stored in ingredients service
-  */
-  buildIngredients() {
-    let deviation = 0; // Init the deviation variable
-    this.ingredientList = [...this.ingredientsService.ingredientNames]; // Shallow copy the names array 
-    let i = this.ingredientList.length;
-    const validA = this.percA > 0;
-    const validB = this.percB > 0;
-    const validC = this.percC > 0;
-    const validD = this.percD > 0;
-    const validE = this.percE > 0;
-
-    // Sort and Filter out unwanted materials
-    this.ingredientList.sort((a, b) => this.ingredientsService.ingredients[a].Total - this.ingredientsService.ingredients[b].Total);
-    while (i > 0) {
-      i--;
-      const ingredient = this.ingredientsService.ingredients[this.ingredientList[i]]
-      deviation = // Measure if an ingredient goes over the maximum viable for the target
-        Math.max((ingredient.A / this.maxMagamin) - this.percA, 0) +
-        Math.max((ingredient.B / this.maxMagamin) - this.percB, 0) +
-        Math.max((ingredient.C / this.maxMagamin) - this.percC, 0) +
-        Math.max((ingredient.D / this.maxMagamin) - this.percD, 0) +
-        Math.max((ingredient.E / this.maxMagamin) - this.percE, 0);
-
-      if (deviation > this.topDeviate || // Remove ingredients that don't match filters and deviate too far.
-        this.ingredientsService.ingredientAvailability[this.ingredientList[i]] == 0 || // and are empty
-        (ingredient.Taste < 0 && this.traits[Senses.Taste]) ||
-        (ingredient.Touch < 0 && this.traits[Senses.Touch]) ||
-        (ingredient.Smell < 0 && this.traits[Senses.Smell]) ||
-        (ingredient.Sight < 0 && this.traits[Senses.Sight]) ||
-        (ingredient.Sound < 0 && this.traits[Senses.Sound]) ||
-        !(((ingredient.A > 0) == validA && validA) || // This section checks to see if the ingredient has anything of value to add.  
-          ((ingredient.B > 0) == validB && validB) || // No point adding an ingredient that is below deviation but has no value.
-          ((ingredient.C > 0) == validC && validC) ||
-          ((ingredient.D > 0) == validD && validD) ||
-          ((ingredient.E > 0) == validE && validE))
-      ) {
-        this.ingredientList.splice(i, 1); // Cut the fat.
-      }
-    }
-    this.indexerInit(); // Initialize the index based on this new ingredient list.
+  /** A macro method to remember potions multiply based on ingredient count */
+  potionCount() {
+    return Math.floor(this.ingredCount / 2);
   }
+
+  /** A macro method to return ingredient count for heuristics if they're not complete */
+  heuristicCount() {
+    return this.heuristicsComplete ? 1 : Math.floor((this.ingredSelection - this.mustHaveArray.length) / 3);
+  }
+
+
+  // HEURISTICS FLOW
+
+  /** Controls the flow of the heuristic search 
+   * @todo handle stuff smaller than heuristics
+  */
+  heuristicFlow(recipe: Recipe) {
+    let slot = 0;
+    while (slot < this.heuristicSize) {
+
+      // Combine a new ingredient into the recipe
+      recipe = this.updateHeuristicRecipe(recipe, slot);
+
+      // Check if the current ingredient slot returned nothing
+      if (recipe.deviation === 99) {
+        slot--
+        if (this.heuristicIndexer[0].index < 0) { // If the first slot returns nothing then we're done.
+          this.sortByHeuristics();
+          this.heuristicsComplete = true;
+
+          return;
+        }
+        this.heuristicIndexer[slot].index--; // reduce the index of this slot and fill the indices of later slots.
+        for (let j = slot + 1; j < this.heuristicIndexer.length; j++) {
+          this.heuristicIndexer[j].index = this.heuristicIndexer[slot].index;
+        }
+        // Cleaned out a slot, return to top. 
+        return;
+      }
+      slot++;
+    }
+
+    // If we're here then we're coming up for air to check frame time and for a new round.
+    this.heuristicIndexer[slot - 1].index--;
+    this.finalizeRecipe(recipe);
+
+  }
+
+  /** Manages heuristic recipe change flow 
+     * @param recipe The recipe that requires more ingredients.
+     * @TODO incorporate heuristics
+    */
+  updateHeuristicRecipe(recipe: Recipe, slot: number): Recipe {
+    const pos = this.heuristicIndexer[slot].index
+    const result = this.findIngredient(recipe, pos, this.heuristicIndexer[slot].size);
+    this.heuristicIndexer[slot].index = result.pos;
+    recipe.deviation = result.finalDeviation;
+    if (result.pos < 0) {
+      return recipe;
+    }
+    const ingredientName = this.ingredientList[result.pos];
+    for (let i = 0; i < this.heuristicIndexer[slot].size; i++) {
+      this.addIngredient(recipe, ingredientName);
+    }
+    return recipe; // recipe.ingredients.length == slotIndex prior to this.
+  }
+
+  /** Updates the sorting based on heuristic model crossed with the sorting selected by the user and the results of the initial heuristics. */
+  sortByHeuristics() {
+    // Create a copy of the viable ingredients name array as an object that accepts weighted values
+    const sortedIngredients: { [key: string]: number } = {}
+    this.ingredientList.forEach(ingredient => {
+      sortedIngredients[ingredient] = 0;
+    })
+
+    // Weight the recipe ingredients by value according to the user selected recipe sort
+    let callback = ((a: Recipe) => { return a.value })
+    switch (this.selectedSort) {
+      case "Ratio":
+        callback = ((a) => { return (a.value * this.potionCount() - a.cost) / a.cost });
+        break;
+      case "Profit":
+        callback = ((a) => { return (a.value * this.potionCount() - a.cost) });
+        break;
+    }
+
+    // Create a recipe array with just ingredients and weights
+    const weightedList = this.heuristicsList.map((recipe: Recipe) => {
+      return { ingredients: recipe.ingredients, value: callback(recipe) }
+    })
+
+    // Match up ingredient names with ingredients in recipes and add weighted value to each ingredient found in each recipe.
+    weightedList.forEach((recipe) => {
+      recipe.ingredients.forEach(ingredient => {
+        sortedIngredients[ingredient] += recipe.value;
+      });
+    })
+
+    // Sort the finalized list and use it to sort main ingredientList
+    this.ingredientList.sort((a, b) => sortedIngredients[a] - sortedIngredients[b])
+    console.log(this.ingredientList) // @TODO remove logs
+    console.log(sortedIngredients)
+    console.log(weightedList)
+  }
+
+
+  // MAIN FLOW
 
   /** Controls the flow of the recipe search */
   discoverNewRecipe(recipe: Recipe) {
-    while (recipe.ingredients.length < this.ingredCount) {
+    while (this.ingredCount - recipe.ingredients.length > 0) {
 
       // Combine a new ingredient into the recipe
       recipe = this.updateRecipe(recipe);
@@ -282,12 +395,12 @@ export class RecipeService {
           this.recipeDisplay();
           return;
         }
-        this.indexer[recipe.ingredients.length - 1 - this.mustHaveArray.length]--; // reduce the index of this slot and fill the indices of later slots.
+        this.indexer[recipe.ingredients.length - this.mustHaveArray.length - 1]--; // reduce the index of this slot and fill the indices of later slots.
         for (let j = recipe.ingredients.length; j < this.ingredCount; j++) {
-          this.indexer[j - this.mustHaveArray.length] = this.indexer[recipe.ingredients.length - 1 - this.mustHaveArray.length];
+          this.indexer[j - this.mustHaveArray.length] = this.indexer[recipe.ingredients.length - this.mustHaveArray.length - 1];
         }
         // Cleaned out a slot, return to top. 
-        // @TODO Alternatively, clear the recipe and check through bottom 2 index per run. This runs at 10s of thousands per tick, it can handle doing two rows at a time.
+        // @TODO Alternatively, clear the recipe slot and check through bottom 2 index per run. This runs at 10s of thousands per tick, it can handle doing two rows at a time.
         return;
       }
     }
@@ -301,12 +414,16 @@ export class RecipeService {
    * @returns object with deviation and pos (index) of the ingredient, or undefined and -1 if none fit.
    * @param recipe the empty or partially built recipe needing a new ingredient.
    * @param pos the current position of the slot currently being worked, moves in reverse.
+   * @param count the number of ingredients to attempt to add. Default 1
    * @TODO allow for division heuristics
-   * @TODO allow for required ingredient (something like an Avail reduction and starter recipe and higher slotIndex before calling discover. Watch out for the indexer sweeper tho)
   */
-  findIngredient(recipe: Recipe, pos: number): { finalDeviation: number; pos: number; } {
+  findIngredient(recipe: Recipe, pos: number, count = 1): { finalDeviation: number; pos: number; } {
+    const ingredRemain = this.ingredCount - recipe.ingredients.length
+    count = Math.max(Math.min(count, ingredRemain), 1) // keep count above 1 and below the available recipe slots
     let finalDeviation = 99; // Let 99 be code for nothing found.
     let deviation;
+    const remainingSlots = ingredRemain - count; // The number of recipe slots left after they're filled by count
+
 
     while (pos >= 0) { // While the ingredients at this slot are available, keep looking through them for a viable one.
 
@@ -315,23 +432,23 @@ export class RecipeService {
         continue;
       }
       const ingredient = this.ingredientsService.ingredients[this.ingredientList[pos]];
-      const A = ingredient.A;
-      const B = ingredient.B;
-      const C = ingredient.C;
-      const D = ingredient.D;
-      const E = ingredient.E;
-      const Total = ingredient.Total;
+      const A = ingredient.A * count;
+      const B = ingredient.B * count;
+      const C = ingredient.C * count;
+      const D = ingredient.D * count;
+      const E = ingredient.E * count;
+      const Total = ingredient.Total * count;
 
 
       // If the final ingredient is added, change from max magamin to the totals in the recipe and get updated ratios.
-      if (recipe.ingredients.length < this.ingredCount - 1) {
+      if (remainingSlots > 0) {
         deviation =
           Math.max(((recipe.A + A) / this.maxMagamin) - this.percA, 0) +
           Math.max(((recipe.B + B) / this.maxMagamin) - this.percB, 0) +
           Math.max(((recipe.C + C) / this.maxMagamin) - this.percC, 0) +
           Math.max(((recipe.D + D) / this.maxMagamin) - this.percD, 0) +
           Math.max(((recipe.E + E) / this.maxMagamin) - this.percE, 0);
-      } else if (recipe.ingredients.length > this.ingredCount - 1) {
+      } else if (remainingSlots < 0) {
         throw new Error("Ingredient count overflow");
       } else {
         if (
@@ -356,8 +473,9 @@ export class RecipeService {
 
       // Skip deviant ingredients and ingredients that go over magamin count. The lowest total magamin is 4 
       // so this will also remove earlier ingredients that go over by assuming all the later ingredients total 4.
-      if (deviation > this.topDeviate ||
-        ((this.ingredCount - 1 - recipe.ingredients.length) * 4 + recipe.Total + ingredient.Total > this.maxMagamin)
+      if ((this.heuristicsComplete && deviation > this.topDeviate) ||
+        deviation > 0.2525 ||
+        ((remainingSlots) * 4 + recipe.Total + Total > this.maxMagamin)
       ) {
         pos--;
       } else {
@@ -369,7 +487,10 @@ export class RecipeService {
     return { finalDeviation, pos };
   }
 
-  /** Adds an ingredient to the recipe */
+  /** Adds an ingredient to the recipe. Ensuring tempAvail has enough ingredients is not handled.
+   * @param recipe The Recipe object to add an ingredient to.
+   * @param ingredientName The ingredient key to add to the recipe.
+  */
   addIngredient(recipe: Recipe, ingredientName: string): Recipe {
     const ingredient = this.ingredientsService.ingredients[ingredientName]
 
@@ -391,9 +512,12 @@ export class RecipeService {
     return recipe;
   }
 
+  /** Manages recipe change flow 
+   * @param recipe The recipe that requires more ingredients.
+   * @TODO incorporate heuristics
+  */
   updateRecipe(recipe: Recipe): Recipe {
     const slotIndex = recipe.ingredients.length - this.mustHaveArray.length
-
     const pos = this.indexer[slotIndex]
     const result = this.findIngredient(recipe, pos);
     this.indexer[slotIndex] = result.pos;
@@ -401,9 +525,9 @@ export class RecipeService {
     if (result.pos < 0) {
       return recipe;
     }
-
     const ingredientName = this.ingredientList[result.pos];
-    return this.addIngredient(recipe, ingredientName); // recipe.ingredients.length == slotIndex prior to this.
+    this.addIngredient(recipe, ingredientName)
+    return recipe; // recipe.ingredients.length == slotIndex prior to this.
   }
 
   /** Finalizes a valid recipe by applying illusion, ranking, and pushing to the recipe list.
@@ -431,11 +555,15 @@ export class RecipeService {
     }
 
     // increase the good recipe counter when finding one, and Rank/price the recipe.
-    this.totalCount++;
-    this.hitCount++;
     this.recipeRank(recipe);
-    this.recipeList.push(recipe)
+    if (this.heuristicsComplete) {
+      this.recipeList.push(recipe)
+      this.totalCount++;
+      this.hitCount++;
+    }
+    else this.heuristicsList.push(recipe);
 
+    //this.recipeList.push(recipe) // @TODO set up the heuristics list.
   }
 
 }
