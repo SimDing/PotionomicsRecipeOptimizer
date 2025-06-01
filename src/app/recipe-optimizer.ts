@@ -1,4 +1,3 @@
-import { Subject } from "rxjs";
 import { Color, COLORS, FormulaType, IngredientsService, Trait, TRAITS } from "./ingredients.service";
 import { PotionRank } from "./potion-rank.repo";
 import glpkLoader, { LP, GLPK, Result } from "glpk.js";
@@ -51,6 +50,8 @@ export enum OptimalityCriteria {
 export default class RecipeOptimizer {
 
     private readonly relevantIngredients: string[] = [];
+    private glpk!: GLPK;
+    private readonly glpkInitialized: Promise<void>; 
 
     constructor(
         private readonly rank: PotionRank,
@@ -60,6 +61,11 @@ export default class RecipeOptimizer {
         private readonly shopBonus: number,
         private readonly ingriedientCount: number,
     ) {
+        this.glpkInitialized = glpk.then(glpkInstance => {
+            this.glpk = glpkInstance;
+        }).catch(error => {
+            console.error("Error initializing GLPK:", error);
+        });
         const colors: Record<Color, boolean> = {} as any;
         const formulaData = this.stocks.formulas.find(f => f.type === this.formula)!;
         for (const color of COLORS) {
@@ -79,23 +85,46 @@ export default class RecipeOptimizer {
         });
     }
 
+    blackListRecipe(ingredients: Record<string, number>, name: string): void {
+        const similarity = this.dot(ingredients, ingredients);
+        const ingredientNames = Object.keys(ingredients);
+        const variables = this.createVariables(ingredientNames, ingredientNames.map(name => ingredients[name]));
+        const constraint: Constraint = {
+            name: `c_blacklist_${name}`,
+            vars: variables,
+            bnds: this.bound({
+                upperBound: similarity - 1,
+            }),
+        };
+    }
+
+    private dot(a: Record<string, number>, b: Record<string, number>): number {
+        let sum = 0;
+        for (const key of Object.keys(a)) {
+            if (b[key] !== undefined) {
+                sum += a[key] * b[key];
+            }
+        }
+        return sum;
+    }
+
     async optimizeRecipe(): Promise<Record<string, number>|'Infeasible'> {
-        const glpkInstance = await glpk;
+        await this.glpkInitialized;
         if (this.relevantIngredients.length === 0) {
             console.warn("No relevant ingredients found for optimization. Please check your ingredient availability and formula.");
             return 'Infeasible';
         }
-        const model = this.createModel(glpkInstance);
+        const model = this.createModel();
         let solution: Result;
         try {
-            solution = await ((glpkInstance.solve(model)) as unknown as Promise<Result>);
+            solution = await ((this.glpk.solve(model)) as unknown as Promise<Result>);
         } catch (error) {
             throw new Error(`Error running model in worker: ${error} Model:\n${model}`);
         }
 
-        if (this.isOk(solution, glpkInstance)) {
+        if (this.isOk(solution)) {
             return this.parseResults(solution);
-        } else if (this.isInfeasible(solution, glpkInstance)) {
+        } else if (this.isInfeasible(solution)) {
             return 'Infeasible';
         } else {
             console.error("Optimization failed with status:", solution.result.status, "Model:\n", model);
@@ -103,12 +132,12 @@ export default class RecipeOptimizer {
         }
     }
 
-    createModel(glpk: GLPK): LP {
+    createModel(): LP {
         return {
             name: this.rank.rank,
-            objective: this.createObjectiveFunction(glpk),
-            subjectTo: this.createConstraints(glpk),
-            bounds: this.createBounds(glpk),
+            objective: this.createObjectiveFunction(),
+            subjectTo: this.createConstraints(),
+            bounds: this.createBounds(),
             generals: this.createGeneralSection(),
             binaries: this.createBinariesSection()
         };
@@ -129,14 +158,14 @@ export default class RecipeOptimizer {
         return parsedResults;
     }
 
-    isOk(status: Result, glpk: GLPK): boolean {
-        return status.result.status ===  glpk.GLP_OPT;
+    isOk(status: Result): boolean {
+        return status.result.status ===  this.glpk.GLP_OPT;
     }
-    isInfeasible(status: any, glpk: GLPK): boolean {
-        return status.result.status === glpk.GLP_INFEAS || status.result.status === glpk.GLP_NOFEAS;
+    isInfeasible(status: any): boolean {
+        return status.result.status === this.glpk.GLP_INFEAS || status.result.status === this.glpk.GLP_NOFEAS;
     }
 
-    private createObjectiveFunction(glpk: GLPK): Objective {
+    private createObjectiveFunction(): Objective {
         let header = "Maximize\n";
         const useValue = this.criteria === OptimalityCriteria.MAXIMIZE_VALUE || this.criteria === OptimalityCriteria.MAXIMIZE_PROFIT;
         const useCost = this.criteria === OptimalityCriteria.MINIMIZE_COST || this.criteria === OptimalityCriteria.MAXIMIZE_PROFIT;
@@ -152,7 +181,7 @@ export default class RecipeOptimizer {
         }
         return {
             name: OptimalityCriteria[this.criteria],
-            direction: glpk.GLP_MAX,
+            direction: this.glpk.GLP_MAX,
             vars: variables,
         };
     }
@@ -229,16 +258,16 @@ export default class RecipeOptimizer {
         return `negative_${trait.toLowerCase()}`;
     }
 
-    private createConstraints(glpk: GLPK): Constraint[] {
+    private createConstraints(): Constraint[] {
         return [
-            this.createTotalMagicConstraint(glpk),
-            ...this.createColorConstraints(glpk),
-            this.createTotalIngredientConstraint(glpk),
-            ...this.createTraitConstraints(glpk),
+            this.createTotalMagicConstraint(),
+            ...this.createColorConstraints(),
+            this.createTotalIngredientConstraint(),
+            ...this.createTraitConstraints(),
         ];
     }
 
-    createTraitConstraints(glpk: GLPK): Constraint[] {
+    createTraitConstraints(): Constraint[] {
         const constraints: Constraint[] = [];
         for (const trait of TRAITS) {
             // Force positive traits to be false if there are no ingredients with that trait.
@@ -254,7 +283,7 @@ export default class RecipeOptimizer {
                     ...this.createVariables([positiveTrait], [1]),
                     ...this.createVariables(ingriedientsWithTrait, ingriedientsWithTrait.map(_ => -1)),
                 ],
-                bnds: this.bound(glpk, {
+                bnds: this.bound({
                     upperBound: 0,
                 }),
             });
@@ -273,7 +302,7 @@ export default class RecipeOptimizer {
                     ...this.createVariables([negativeTrait], [1]),
                     ...this.createVariables(ingriedientsWithTrait, ingriedientsWithTrait.map(_ => -1)),
                 ],
-                bnds: this.bound(glpk, {
+                bnds: this.bound({
                     lowerBound: 0,
                 }),
             });
@@ -281,7 +310,7 @@ export default class RecipeOptimizer {
         return constraints;
     }
 
-    private createTotalMagicConstraint(glpk: GLPK): Constraint {
+    private createTotalMagicConstraint(): Constraint {
         const minInclusive = this.rank.min;
         const maxExclusive = this.rank.max;
         const totalMagic = this.createVariables(this.relevantIngredients, this.relevantIngredients.map((ingredientName) => {
@@ -291,29 +320,29 @@ export default class RecipeOptimizer {
         return {
             name: "c_total_magic",
             vars: totalMagic,
-            bnds: this.bound(glpk, {
+            bnds: this.bound({
                 lowerBound: minInclusive,
                 upperBound: maxExclusive - 1,
             }),
         };
     }
 
-    private bound(glpk: GLPK, bounds: SafeBound): ConstraintBound {
+    private bound(bounds: SafeBound): ConstraintBound {
         if (bounds.lowerBound !== undefined && bounds.upperBound !== undefined) {
             return {
-                type: bounds.lowerBound == bounds.upperBound ? glpk.GLP_FX : glpk.GLP_DB,
+                type: bounds.lowerBound == bounds.upperBound ? this.glpk.GLP_FX : this.glpk.GLP_DB,
                 lb: bounds.lowerBound,
                 ub: bounds.upperBound,
             };
         } else if (bounds.upperBound !== undefined) {
             return {
-                type: glpk.GLP_UP,
+                type: this.glpk.GLP_UP,
                 ub: bounds.upperBound,
                 lb: -Infinity,
             };
         } else if (bounds.lowerBound !== undefined) {
             return {
-                type: glpk.GLP_LO,
+                type: this.glpk.GLP_LO,
                 lb: bounds.lowerBound,
                 ub: Infinity,
             };
@@ -321,7 +350,7 @@ export default class RecipeOptimizer {
         throw new Error();
     }
 
-    private createColorConstraints(glpk: GLPK): Constraint[] {
+    private createColorConstraints(): Constraint[] {
         const colors = ['A', 'B', 'C', 'D', 'E'] as const;
         const fromula = this.stocks.formulas.find(f => f.type === this.formula)!;
         const usedColors = colors.filter(color => fromula[color] > 0);
@@ -332,13 +361,13 @@ export default class RecipeOptimizer {
                 const color2 = usedColors[j];
                 const ratio1 = fromula[color1];
                 const ratio2 = fromula[color2];
-                constraints.push(this.createColorConstraint(color1, color2, ratio1, ratio2, glpk));
+                constraints.push(this.createColorConstraint(color1, color2, ratio1, ratio2));
             }
         }
         return constraints;
     }
 
-    private createColorConstraint(color1: Color, color2: Color, ratio1: number, ratio2: number, glpk: GLPK): Constraint {
+    private createColorConstraint(color1: Color, color2: Color, ratio1: number, ratio2: number): Constraint {
         // We need to ensure: color1 / color2 == ratio1 / ratio2
         // This means: color1 * ratio2 - color2 * ratio1 = 0
         const variables = this.createVariables(this.relevantIngredients, this.relevantIngredients.map((ingredientName) => {
@@ -351,31 +380,31 @@ export default class RecipeOptimizer {
         return {
             name: `c_color_${color1}_${color2}`,
             vars: variables,
-            bnds: this.bound(glpk, {
+            bnds: this.bound({
                 lowerBound: 0,
                 upperBound: 0,
             }),
         };
     }
 
-    private createTotalIngredientConstraint(glpk: GLPK): Constraint {
+    private createTotalIngredientConstraint(): Constraint {
         const totalIngredients = this.createVariables(this.relevantIngredients, this.relevantIngredients.map(() => 1));
         return {
             name: "c_total_ingredients",
             vars: totalIngredients,
-            bnds: this.bound(glpk, {
+            bnds: this.bound({
                 lowerBound: this.ingriedientCount,
                 upperBound: this.ingriedientCount,
             }),
         };
     }
 
-    createBounds(glpk: GLPK): VariableBound[] {
+    createBounds(): VariableBound[] {
         return this.relevantIngredients.map((ingredientName) => {
             const min = this.stocks.ingredientMustHaves[ingredientName] || 0;
             const max = this.stocks.ingredientAvailability[ingredientName] || 0;
             return {
-                ...this.bound(glpk, {
+                ...this.bound({
                     lowerBound: min,
                     upperBound: max,
                 }),
