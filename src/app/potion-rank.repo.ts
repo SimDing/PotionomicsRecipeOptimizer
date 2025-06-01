@@ -228,4 +228,16 @@ export class RankRepo {
             this.ranks[i].mult = Math.pow(1.125, i % 6) * Math.pow(2.252540588, Math.floor(i / 6))
         }
     }
+
+    /**
+     * Returns the rank for a given magimin value.
+     */
+    getRank(magimin: number): PotionRank {
+        for (const rank of this.ranks) {
+            if (magimin >= rank.min && magimin < rank.max) {
+                return rank;
+            }
+        }
+        throw new Error(`No rank found for magimin value: ${magimin}`);
+    }
 }

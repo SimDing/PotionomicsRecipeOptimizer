@@ -19,22 +19,4 @@ export class MainLoopService {
   currentTime = new Date().getTime();
   started = false;
 
-  start(){
-
-    window.setInterval(() => {
-      this.longTickSubject.next(true);
-    }, LONG_TICK_INTERVAL_MS);
-
-    window.setInterval(()=> {
-      const newTime = new Date().getTime();
-      this.currentTime = newTime;
-
-      // If it's started and the loop has been going for less than the tick interval (currently 25ms), keep going.
-      while (this.started && this.currentTime < TICK_INTERVAL_MS + newTime) {
-        this.tickSubject.next(true);
-        this.currentTime = new Date().getTime();
-      }
-    }, TICK_INTERVAL_MS
-    )
-  }
 }

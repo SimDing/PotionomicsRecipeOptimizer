@@ -1,7 +1,7 @@
 <div class="wrapper">
     <div class="panelContainer">
         <div class="leftPanel">
-            <button [disabled]="recipeService.mustHaveArray.length >= recipeService.ingredSelection" *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
+            <button [disabled]="ingredientsService.mustHaveCount >= recipeService.ingredientSelection" *ngIf="!mainLoopService.started" (click)="startClick()">Start</button>
             <button *ngIf="!mainLoopService.started" (click)="resetClick()">Reset</button>
             <button *ngIf="mainLoopService.started" (click)="startClick()">Pause</button>
             <span [matTooltipShowDelay]="500"
@@ -12,7 +12,7 @@
                 since refresh: {{(mainLoopService.currentTime - mainLoopService.refreshTime) / 1000}}</div>
             <div *ngIf="!mainLoopService.started"> paused</div>
             <div *ngIf="!mainLoopService.started"> Cauldron ingredient target: <input type="number" min="2" max="14"
-                    value="{{recipeService.ingredSelection}}" (change)="ingredCountChange($event)"></div>
+                    value="{{recipeService.ingredientSelection}}" (change)="ingredCountChange($event)"></div>
             <div *ngIf="!mainLoopService.started"> Cauldron magamin max: <input type="number" min="0" max="2000"
                     value="{{recipeService.maxMagamin}}" (change)="magaminChange($event)"></div>
             <div *ngIf="!mainLoopService.started"> Formula: <select (change)="formulaUpdate($event)">
@@ -28,17 +28,9 @@
                 Shop % bonus: <input type="number" min="0" max="10000" value="{{recipeService.shopBonus}}"
                     (change)="bonusChange($event)"></div>
             <p></p>
-            <div> Total tries: {{recipeService.totalCount}}</div>
-            <div> Recipes found: {{recipeService.hitCount}}</div>
-            <span *ngIf="recipeService.mustHaveArray.length >= recipeService.ingredSelection" style="color: red;"> Too many must-have
+            <span *ngIf="ingredientsService.mustHaveCount >= recipeService.ingredientSelection" style="color: red;"> Too many must-have
                 ingredients for the cauldron!
             </span>
-            <table *ngFor="let j of recipeService.heuristicIndexer; let i = index">
-                Heuristic {{i + 1}} remaining checks: {{j.index+1}}
-            </table>
-            <table *ngFor="let j of recipeService.indexer; let i = index">
-                Ingredient {{i + 1}} remaining checks: {{j+1}}
-            </table>
         </div>
         <div class="rightPanel" *ngIf="!mainLoopService.started">
             <div>

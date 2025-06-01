@@ -48,7 +48,7 @@ export class DataService {
       sortMode2: this.sortingService.sortMode2,
       filter: this.sortingService.filter,
       ingredients: ingredients,
-      ingredSelection: this.recipeService.ingredSelection,
+      ingredSelection: this.recipeService.ingredientSelection,
       target: this.recipeService.maxMagamin,
       selectedFormula: this.recipeService.selectedFormula,
       selectedQuality: this.recipeService.selectedQuality,
@@ -91,7 +91,7 @@ export class DataService {
       this.recipeService.selectedQuality = data.selectedQuality || "Perfect";
       this.recipeService.selectedSort = data.selectedSort || "Profit";
       this.recipeService.maxMagamin = data.target || 375;
-      this.recipeService.ingredSelection = data.ingredSelection || 9;
+      this.recipeService.ingredientSelection = data.ingredSelection || 9;
       this.recipeService.ingredCount = data.ingredSelection || 9;
       this.recipeService.traits = data.traits || [false, false, false, false, false];
       this.recipeService.illusion = data.illusion || 0;
@@ -100,7 +100,6 @@ export class DataService {
     } 
     this.sortingService.ingredientSort(this.sortingService.sortMode2); // Secondary sorts first.
     this.sortingService.ingredientSort(this.sortingService.sortMode);
-    this.recipeService.updateFormula();
   }
 
   /** Removes all settings. */

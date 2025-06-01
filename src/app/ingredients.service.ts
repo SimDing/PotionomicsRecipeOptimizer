@@ -32,34 +32,37 @@ export enum FormulaType {
   CurseCure
 }
 
+export const TRAITS = [
+  'Taste',
+  'Touch',
+  'Smell',
+  'Sight',
+  'Sound'
+] as const;
+export type Trait = (typeof TRAITS)[number];
+
+export const COLORS = [
+  'A',
+  'B',
+  'C',
+  'D',
+  'E'
+] as const;
+export type Color = (typeof COLORS)[number];
+
 /** Interface to house both ingredients and recipes, extended as it made certain operations simpler. */
-export interface IngredientStats {
-  A: number;
-  B: number;
-  C: number;
-  D: number;
-  E: number;
+export interface IngredientStats extends Record<Trait, number>, Record<Color, number> {
   cost: number;
   Total: number;
-  Taste: number;
-  Touch: number;
-  Smell: number;
-  Sight: number;
-  Sound: number;
   Rarity: string;
   Location: string;
   Type: string;
 }
 
 /** Interface for the formula templates. */
-interface Formula {
+export interface Formula extends Record<Color, number> {
   type: FormulaType;
   name: string;
-  A: number;
-  B: number;
-  C: number;
-  D: number;
-  E: number;
   value: number;
 }
 
@@ -75,6 +78,7 @@ export class IngredientsService {
   ingredients: Record<string,IngredientStats> = {}
   ingredientAvailability: Record<string, number> = {} // Number of this ingredient user has for potionmaking.
   ingredientMustHaves: Record<string, number> = {} // Number of this ingredient user must have included in the recipe.
+  mustHaveCount: number = 0; // Total number of must-have ingredients in the recipe.
 
   formulas: Formula[] = [
     {
@@ -366,6 +370,16 @@ export class IngredientsService {
       } else if (this.ingredients[ingredient].Rarity == "Epic") {
         this.ingredients[ingredient].Rarity = "1-".concat(this.ingredients[ingredient].Rarity);
       }
+    }
+  }
+
+  setMustHave(ingredient: string, amount: number) {
+    if (this.ingredientNames.includes(ingredient)) {
+      const previousAmount = this.ingredientMustHaves[ingredient] || 0;
+      this.mustHaveCount += amount - previousAmount;
+      this.ingredientMustHaves[ingredient] = amount;
+    } else {
+      console.error(`Ingredient ${ingredient} not found in ingredient names.`);
     }
   }
 }

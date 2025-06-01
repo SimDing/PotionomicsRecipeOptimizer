@@ -30,14 +30,12 @@ export class AppComponent implements OnInit {
   ) {
     this.qualitySelection = Object.keys(this.recipeService.qualities)
     this.recipeSort = Object.keys(this.recipeService.recipeSorts)
-    this.recipeService.buildIngredients();
   }
 
   /** Startup */
   ngOnInit(): void {
     this.dataService.loadData();
     this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 });
-    this.mainLoopService.start();
   }
 
   /** Changes the ingredient sorting */
@@ -65,10 +63,10 @@ export class AppComponent implements OnInit {
 
   /** Flips the start/stop for the combination sim. */
   startClick() {
-    this.mainLoopService.started = !this.mainLoopService.started;
+    this.recipeService.ingredCount = this.recipeService.ingredientSelection;
+    this.recipeService.startOptimization();
     this.recipeService.recipeSort();
     this.recipeService.recipeDisplay();
-    this.recipeService.ingredCount = this.recipeService.ingredSelection;
     this.ingredientCountDisplay = Array.from({ length: this.recipeService.ingredCount - 1 }); // -1 because the first is a header.
   }
 
@@ -161,8 +159,7 @@ export class AppComponent implements OnInit {
   mustHaveChange(event: Event, name: string) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber, 14), 0);
-    this.ingredientsService.ingredientMustHaves[name] = numCheck;
-    this.recipeService.updateMustHaves();
+    this.ingredientsService.setMustHave(name, numCheck);
     this.resetClick();
   }
 
@@ -170,7 +167,7 @@ export class AppComponent implements OnInit {
   ingredCountChange(event: Event) {
     if (!(event.target instanceof HTMLInputElement)) return;
     const numCheck = Math.max(Math.min(Number.isNaN(event.target.valueAsNumber) ? 2 : event.target.valueAsNumber, 14), 2);
-    this.recipeService.ingredSelection = numCheck;
+    this.recipeService.ingredientSelection = numCheck;
     this.resetClick();
   }
 
@@ -224,14 +221,5 @@ export class AppComponent implements OnInit {
   /** Display helper function, rounds to two decimals */
   round(i: number) {
     return Math.round(i*100)/100
-  }
-
-  /** @TODO Heuristics something somethng */
-  heuristicChoices(){
-    this.heuristicSelection = []
-    const ingreds = this.recipeService.ingredSelection - this.recipeService.mustHaveArray.length;
-    for (let i = 2; i * 2 <= ingreds; i++){
-      if ( ingreds % i == 0) this.heuristicSelection.push(i)
-    }
   }
 }
