@@ -26,6 +26,11 @@ interface LowerBound {
 }
 type SafeBound = UpperBound | LowerBound;
 
+interface OptimalResult {
+    objective: number;
+    recipe: Record<string, number>;
+}
+
 /*
 Example of a linear programming model in Highs format:
 Maximize
@@ -51,7 +56,9 @@ export default class RecipeOptimizer {
 
     private readonly relevantIngredients: string[] = [];
     private glpk!: GLPK;
-    private readonly glpkInitialized: Promise<void>; 
+    private readonly glpkInitialized: Promise<void>;
+    private readonly blacklistConstraints: Constraint[] = [];
+    private baseValue: number = 0;
 
     constructor(
         private readonly rank: PotionRank,
@@ -85,17 +92,18 @@ export default class RecipeOptimizer {
         });
     }
 
-    blackListRecipe(ingredients: Record<string, number>, name: string): void {
+    blackListRecipe(ingredients: Record<string, number>): void {
         const similarity = this.dot(ingredients, ingredients);
         const ingredientNames = Object.keys(ingredients);
         const variables = this.createVariables(ingredientNames, ingredientNames.map(name => ingredients[name]));
         const constraint: Constraint = {
-            name: `c_blacklist_${name}`,
+            name: `c_blacklist_${this.blacklistConstraints.length}`,
             vars: variables,
             bnds: this.bound({
                 upperBound: similarity - 1,
             }),
         };
+        this.blacklistConstraints.push(constraint);
     }
 
     private dot(a: Record<string, number>, b: Record<string, number>): number {
@@ -108,7 +116,7 @@ export default class RecipeOptimizer {
         return sum;
     }
 
-    async optimizeRecipe(): Promise<Record<string, number>|'Infeasible'> {
+    async optimizeRecipe(): Promise<OptimalResult|'Infeasible'> {
         await this.glpkInitialized;
         if (this.relevantIngredients.length === 0) {
             console.warn("No relevant ingredients found for optimization. Please check your ingredient availability and formula.");
@@ -132,7 +140,7 @@ export default class RecipeOptimizer {
         }
     }
 
-    createModel(): LP {
+    private createModel(): LP {
         return {
             name: this.rank.rank,
             objective: this.createObjectiveFunction(),
@@ -143,7 +151,7 @@ export default class RecipeOptimizer {
         };
     }
 
-    parseResults(results: Result): Record<string, number> {
+    private parseResults(results: Result): OptimalResult {
         const names: Record<string, string> = {};
         for (const name of this.relevantIngredients) {
             names[this.safeVariableName(name)] = name;
@@ -155,26 +163,25 @@ export default class RecipeOptimizer {
                 parsedResults[names[key]] = roundedValue;
             }
         }
-        return parsedResults;
+        return {
+            recipe: parsedResults,
+            objective: results.result.z + this.baseValue,
+        };
     }
 
-    isOk(status: Result): boolean {
+    private isOk(status: Result): boolean {
         return status.result.status ===  this.glpk.GLP_OPT;
     }
-    isInfeasible(status: any): boolean {
+    private isInfeasible(status: any): boolean {
         return status.result.status === this.glpk.GLP_INFEAS || status.result.status === this.glpk.GLP_NOFEAS;
     }
 
     private createObjectiveFunction(): Objective {
-        let header = "Maximize\n";
         const useValue = this.criteria === OptimalityCriteria.MAXIMIZE_VALUE || this.criteria === OptimalityCriteria.MAXIMIZE_PROFIT;
         const useCost = this.criteria === OptimalityCriteria.MINIMIZE_COST || this.criteria === OptimalityCriteria.MAXIMIZE_PROFIT;
         const variables: Variable[] = [];
         if (useValue) {
             variables.push(...this.createValueVars());
-        }
-        if (useValue && useCost) {
-            header += "\n";
         }
         if (useCost) {
             variables.push(...this.createCostVariables());
@@ -191,28 +198,6 @@ export default class RecipeOptimizer {
             const stats = this.stocks.ingredients[ingredientName];
             return -stats.cost;
         }));
-    }
-
-    private variablesToString(variables: string[], coefficients: number[], includeFirstSign = false): string {
-        if (variables.length !== coefficients.length) {
-            throw new Error("Variables and coefficients must have the same length.");
-        }
-        const pairs = variables.map((variable, index) => [variable, coefficients[index]] as const);
-        return pairs.filter(([_, coefficient]) => coefficient !== 0)
-            .map(([variable, coefficient], index) => this.variableToString(variable, coefficient, !includeFirstSign && index === 0))
-            .join("\n");
-    }
-
-    private variableToString(variable: string, coefficient: number, first = false): string {
-        if (coefficient === 0) return "";
-        const absCoefficient = Math.abs(coefficient);
-        const sign = coefficient < 0 ? "- " : (first ? "" : "+ ");
-        variable = this.safeVariableName(variable);
-        if (absCoefficient === 1) {
-            return `${sign}${variable}`;
-        } else {
-            return `${sign}${absCoefficient} ${variable}`;
-        }
     }
 
     private safeVariableName(variable: string): string {
@@ -232,8 +217,8 @@ export default class RecipeOptimizer {
     private createValueVars(): Variable[] {
         const formula = this.stocks.formulas.find(f => f.type === this.formula)!;
         const outputAmunt = Math.floor(this.ingriedientCount / 2);
-        const baseValue = formula.value * this.rank.mult * outputAmunt * (1 + 0.01 * this.shopBonus);
-        const changePerTrait = 0.05 * baseValue;
+        this.baseValue = formula.value * this.rank.mult * outputAmunt * (1 + 0.01 * this.shopBonus);
+        const changePerTrait = 0.05 * this.baseValue;
         const positiveTraits = TRAITS.map(RecipeOptimizer.positiveTraitName);
         const negativeTraits = TRAITS.map(RecipeOptimizer.negativeTraitName);
         const positiveVariables = this.createVariables(positiveTraits, positiveTraits.map(_ => changePerTrait));
@@ -264,10 +249,11 @@ export default class RecipeOptimizer {
             ...this.createColorConstraints(),
             this.createTotalIngredientConstraint(),
             ...this.createTraitConstraints(),
+            ...this.blacklistConstraints,
         ];
     }
 
-    createTraitConstraints(): Constraint[] {
+    private createTraitConstraints(): Constraint[] {
         const constraints: Constraint[] = [];
         for (const trait of TRAITS) {
             // Force positive traits to be false if there are no ingredients with that trait.
@@ -399,7 +385,7 @@ export default class RecipeOptimizer {
         };
     }
 
-    createBounds(): VariableBound[] {
+    private createBounds(): VariableBound[] {
         return this.relevantIngredients.map((ingredientName) => {
             const min = this.stocks.ingredientMustHaves[ingredientName] || 0;
             const max = this.stocks.ingredientAvailability[ingredientName] || 0;

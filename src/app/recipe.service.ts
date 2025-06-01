@@ -77,16 +77,6 @@ export class RecipeService {
   }
 
   startOptimization() {
-    const maxRank = this.rankRepo.getRank(this.maxMagamin);
-    for (const rank of this.rankRepo.ranks) {
-      this.optimizeRank(rank);
-      if (rank === maxRank) {
-        break;
-      }
-    }
-  }
-
-  optimizeRank(rank: PotionRank) {
     let criterria: OptimalityCriteria;
     switch (this.selectedSort) {
       case "Value":
@@ -98,26 +88,57 @@ export class RecipeService {
       default:
         criterria = OptimalityCriteria.MAXIMIZE_VALUE;
     }
-    const optimizer = new RecipeOptimizer(
-      rank,
-      criterria,
-      this.ingredientsService,
-      this.ingredientsService.formulas[this.selectedFormula].type,
-      this.shopBonus,
-      this.ingredientSelection,
-    );
-    optimizer.optimizeRecipe().then(result => {
-      console.log("Optimization result:", result);
-      if (result !== 'Infeasible') {
-        const recipe = this.recipeFromOptimizerResult(result, this.ingredientsService.formulas[this.selectedFormula]);
-        this.recipeListDisplay.push(recipe);
-        this.recipeSort(this.recipeListDisplay);
-        console.log("Recipe created");
+    const maxRank = this.rankRepo.getRank(this.maxMagamin);
+    const optimizers: RecipeOptimizer[] = [];
+    for (const rank of this.rankRepo.ranks) {
+      optimizers.push(new RecipeOptimizer(
+        rank,
+        criterria,
+        this.ingredientsService,
+        this.ingredientsService.formulas[this.selectedFormula].type,
+        this.shopBonus,
+        this.ingredientSelection,
+      ));
+      if (rank === maxRank) {
+        break;
       }
-      // Handle the result here, e.g., update the recipe list or display results
-    }).catch(error => {
-      console.error("Optimization error:", error);
-    });
+    }
+    const formula = this.ingredientsService.formulas[this.selectedFormula];
+    const firstStep = Promise.all(optimizers.map(optimizer => this.optimize(optimizer, formula)));
+    firstStep.then(results => this.continueOptimization(optimizers, results, formula)).catch(console.error);
+  }
+
+  private async continueOptimization(optimizers: RecipeOptimizer[], results: ({ recipe: Recipe, objective: number } | null)[], formula: Formula) {
+    const maxRecipes = optimizers.length + 100;
+    while (this.recipeListDisplay.length < maxRecipes) {
+      let bestIndex = null;
+      for (let i = 0; i < results.length; i++) {
+        if (results[i] !== null) {
+          if (bestIndex == null || (results[bestIndex]?.objective ?? 0) < (results[i]?.objective ?? 0)) {
+            bestIndex = i;
+          }
+        }
+      }
+      if (bestIndex == null) break;
+      results[bestIndex] = await this.optimize(optimizers[bestIndex], formula);
+    }
+  }
+
+  private async optimize(optimizer: RecipeOptimizer, formula: Formula): Promise<{ recipe: Recipe, objective: number } | null> {
+    const result = await optimizer.optimizeRecipe();
+    if (result === 'Infeasible') {
+      return null;
+    } else {
+      optimizer.blackListRecipe(result.recipe);
+      const recipe = this.recipeFromOptimizerResult(result.recipe, formula);
+      this.recipeListDisplay.push(recipe);
+      this.recipeSort(this.recipeListDisplay);
+      this.recipeListDisplay = this.recipeListDisplay.slice(0, 100);
+      return {
+        recipe,
+        objective: result.objective,
+      };
+    }
   }
 
   private recipeFromOptimizerResult(result: Record<string, number>, formula: Formula): Recipe {
